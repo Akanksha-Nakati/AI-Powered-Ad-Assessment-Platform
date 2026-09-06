@@ -9,7 +9,13 @@ from backend.app.api.v1.router import api_router
 from backend.app.config import Settings
 from backend.app.container import Container
 from backend.app.services.assessment_service import AssessmentService
-from backend.tests.fakes import FakeKnowledgeStore, FakeScorer, FakeVisionAnalyzer
+from backend.tests.fakes import (
+    FakeAssessmentRepository,
+    FakeBlobStore,
+    FakeKnowledgeStore,
+    FakeScorer,
+    FakeVisionAnalyzer,
+)
 
 
 @pytest.fixture
@@ -36,21 +42,30 @@ def make_client(settings):
         vision: FakeVisionAnalyzer | None = None,
         scorer: FakeScorer | None = None,
         knowledge: FakeKnowledgeStore | None = None,
+        repository: FakeAssessmentRepository | None = None,
+        blobs: FakeBlobStore | None = None,
     ) -> tuple[TestClient, Container]:
         vision = vision or FakeVisionAnalyzer()
         scorer = scorer or FakeScorer()
         knowledge = knowledge or FakeKnowledgeStore()
+        repository = repository if repository is not None else FakeAssessmentRepository()
+        blobs = blobs if blobs is not None else FakeBlobStore()
         container = Container(
             settings=settings,
             vision=vision,
             scorer=scorer,
             knowledge=knowledge,
+            repository=repository,
+            blobs=blobs,
             assessments=AssessmentService(
                 vision=vision,
                 scorer=scorer,
                 knowledge=knowledge,
+                repository=repository,
+                blobs=blobs,
                 retrieval_k=settings.retrieval_k,
                 prompt_version=settings.prompt_version,
+                provider_info={"scoring_model": "fake"},
             ),
         )
         return TestClient(build_test_app(container)), container

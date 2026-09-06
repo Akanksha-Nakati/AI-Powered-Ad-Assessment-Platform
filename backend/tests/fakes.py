@@ -97,3 +97,46 @@ def _full_scorecard(**overrides) -> AdScorecard:
     }
     payload.update(overrides)
     return AdScorecard(**payload)
+
+
+class FakeBlobStore:
+    """In-memory content-addressed store."""
+
+    def __init__(self) -> None:
+        self.blobs: dict[str, bytes] = {}
+        self.media_types: dict[str, str] = {}
+
+    async def put(self, data: bytes, media_type: str) -> str:
+        import hashlib
+
+        digest = hashlib.sha256(data).hexdigest()
+        self.blobs[digest] = data
+        self.media_types[digest] = media_type
+        return digest
+
+    async def get(self, digest: str) -> bytes | None:
+        return self.blobs.get(digest)
+
+
+class FakeAssessmentRepository:
+    """In-memory repository preserving insertion order."""
+
+    def __init__(self) -> None:
+        self.saved: list = []
+        self.by_cache_key: dict = {}
+
+    async def add(self, assessment) -> None:
+        self.saved.append(assessment)
+        key = assessment.provider_info.get("cache_key")
+        if key:
+            self.by_cache_key[key] = assessment
+
+    async def get(self, assessment_id: str):
+        return next((a for a in self.saved if a.id == assessment_id), None)
+
+    async def list(self, *, limit: int = 20, offset: int = 0) -> list:
+        newest_first = list(reversed(self.saved))
+        return newest_first[offset : offset + limit]
+
+    async def find_cached(self, cache_key: str):
+        return self.by_cache_key.get(cache_key)

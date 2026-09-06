@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from typing import Annotated
+
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
 
 from backend.app.api.deps import AssessmentServiceDep
+from backend.app.domain.errors import NotFoundError
 from backend.app.domain.models import AdMetadata, Assessment
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
@@ -45,3 +48,24 @@ async def create_assessment(
         media_type=media_type,
         metadata=AdMetadata(platform=platform, industry=industry, ad_type=ad_type),
     )
+
+
+@router.get("", response_model=list[Assessment])
+async def list_assessments(
+    service: AssessmentServiceDep,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[Assessment]:
+    """Assessment history, most recent first."""
+    return await service.history(limit=limit, offset=offset)
+
+
+@router.get("/{assessment_id}", response_model=Assessment)
+async def get_assessment(
+    assessment_id: str,
+    service: AssessmentServiceDep,
+) -> Assessment:
+    assessment = await service.get(assessment_id)
+    if assessment is None:
+        raise NotFoundError(f"no assessment with id {assessment_id}")
+    return assessment

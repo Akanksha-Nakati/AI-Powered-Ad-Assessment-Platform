@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     gemini_embedding_model: str = "models/text-embedding-004"
     claude_model: str = "claude-opus-5"
 
+    # --- Persistence ---
+    #: Swap for postgresql+asyncpg://... to move off SQLite; no code changes.
+    database_url: str = f"sqlite+aiosqlite:///{BACKEND_DIR / 'storage' / 'app.db'}"
+    blob_path: Path = BACKEND_DIR / "storage" / "blobs"
+
     # --- Retrieval ---
     chroma_path: Path = BACKEND_DIR / "storage" / "chroma"
     docs_path: Path = BACKEND_DIR / "data" / "marketing_docs"

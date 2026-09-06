@@ -15,6 +15,7 @@ from typing import Protocol, runtime_checkable
 from backend.app.domain.models import (
     AdMetadata,
     AdScorecard,
+    Assessment,
     RetrievedChunk,
     VisualAnalysis,
 )
@@ -69,4 +70,38 @@ class KnowledgeStore(Protocol):
         Raises:
             KnowledgeStoreUnavailable: the store is not ready or failed.
         """
+        ...
+
+
+@runtime_checkable
+class BlobStore(Protocol):
+    """Content-addressed storage for uploaded images."""
+
+    async def put(self, data: bytes, media_type: str) -> str:
+        """Store bytes and return their sha256 digest.
+
+        Content addressing means storing the same ad twice costs one copy, and
+        the digest doubles as the assessment cache key.
+        """
+        ...
+
+    async def get(self, digest: str) -> bytes | None:
+        """Return the stored bytes, or None if the digest is unknown."""
+        ...
+
+
+@runtime_checkable
+class AssessmentRepository(Protocol):
+    """Persistence for completed assessments."""
+
+    async def add(self, assessment: Assessment) -> None: ...
+
+    async def get(self, assessment_id: str) -> Assessment | None: ...
+
+    async def list(self, *, limit: int = 20, offset: int = 0) -> list[Assessment]:
+        """Most recent first."""
+        ...
+
+    async def find_cached(self, cache_key: str) -> Assessment | None:
+        """Return a previous assessment for an identical request, if any."""
         ...

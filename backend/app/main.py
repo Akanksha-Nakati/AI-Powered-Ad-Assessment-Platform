@@ -30,6 +30,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         container: Container = build_container(resolved)
         app.state.container = container
+
+        # First-run convenience for local SQLite. Alembic owns schema changes
+        # from here; see backend/alembic/.
+        if container.engine is not None:
+            from backend.app.infra.db.session import create_all
+
+            await create_all(container.engine)  # type: ignore[arg-type]
+
         try:
             # Warming the store here is what stops every request paying to
             # re-open the collection, as the previous implementation did.
@@ -39,6 +47,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "knowledge store failed to initialise; /health will report not ready"
             )
         yield
+
+        if container.engine is not None:
+            await container.engine.dispose()  # type: ignore[attr-defined]
 
     app = FastAPI(
         title="Ad Assessment API",

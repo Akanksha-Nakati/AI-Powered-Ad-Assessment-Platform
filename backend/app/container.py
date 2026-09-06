@@ -11,7 +11,13 @@ from dataclasses import dataclass
 
 from backend.app.config import Settings
 from backend.app.domain.errors import ConfigurationError
-from backend.app.domain.ports import KnowledgeStore, Scorer, VisionAnalyzer
+from backend.app.domain.ports import (
+    AssessmentRepository,
+    BlobStore,
+    KnowledgeStore,
+    Scorer,
+    VisionAnalyzer,
+)
 from backend.app.services.assessment_service import AssessmentService
 
 
@@ -21,7 +27,10 @@ class Container:
     vision: VisionAnalyzer
     scorer: Scorer
     knowledge: KnowledgeStore
+    repository: AssessmentRepository
+    blobs: BlobStore
     assessments: AssessmentService
+    engine: object | None = None
 
 
 def build_container(settings: Settings) -> Container:
@@ -36,11 +45,15 @@ def build_container(settings: Settings) -> Container:
     vision = _build_vision(settings)
     scorer = _build_scorer(settings)
     knowledge = _build_knowledge(settings)
+    engine, repository = _build_repository(settings)
+    blobs = _build_blobs(settings)
 
     service = AssessmentService(
         vision=vision,
         scorer=scorer,
         knowledge=knowledge,
+        repository=repository,
+        blobs=blobs,
         retrieval_k=settings.retrieval_k,
         prompt_version=settings.prompt_version,
         provider_info={
@@ -54,7 +67,10 @@ def build_container(settings: Settings) -> Container:
         vision=vision,
         scorer=scorer,
         knowledge=knowledge,
+        repository=repository,
+        blobs=blobs,
         assessments=service,
+        engine=engine,
     )
 
 
@@ -104,3 +120,18 @@ def _build_knowledge(settings: Settings) -> KnowledgeStore:
         chunk_overlap=settings.chunk_overlap,
         retrieval_k=settings.retrieval_k,
     )
+
+
+def _build_repository(settings: Settings) -> tuple[object, AssessmentRepository]:
+    from backend.app.infra.db.repositories import SqlAssessmentRepository
+    from backend.app.infra.db.session import create_engine, create_session_factory
+
+    engine = create_engine(settings.database_url)
+    return engine, SqlAssessmentRepository(create_session_factory(engine))
+
+
+def _build_blobs(settings: Settings) -> BlobStore:
+    from backend.app.infra.storage.local_blob import LocalBlobStore
+
+    settings.blob_path.mkdir(parents=True, exist_ok=True)
+    return LocalBlobStore(settings.blob_path)

@@ -20,4 +20,10 @@ langchain-chroma>=0.2,<0.3
 langchain-google-genai>=2.0,<3
 chromadb>=1.0,<2
 
+# Persistence. SQLite locally; swap DATABASE_URL for Postgres (asyncpg) with
+# no code change -- the repository layer only sees an AsyncSession.
+sqlalchemy[asyncio]>=2.0,<3
+aiosqlite>=0.20
+alembic>=1.14
+
 Pillow==11.1.0
