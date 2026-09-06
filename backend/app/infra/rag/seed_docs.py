@@ -1,10 +1,18 @@
+"""Baseline marketing knowledge shipped with the app.
+
+Moved verbatim from backend/services/doc_generator.py -- the content was fine,
+only its location was wrong.
+"""
+
 from pathlib import Path
 from textwrap import dedent
 
 
 def ensure_marketing_docs(doc_dir: Path) -> None:
-    """
-    Create core marketing markdown docs on first run.
+    """Create the baseline marketing docs on first run.
+
+    These are the global ``best_practices`` corpus. Brand-specific documents are
+    ingested separately and are not written here.
     """
     doc_dir.mkdir(parents=True, exist_ok=True)
 

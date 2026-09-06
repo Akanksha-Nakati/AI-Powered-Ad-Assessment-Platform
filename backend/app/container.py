@@ -1,0 +1,105 @@
+"""Composition root.
+
+The only module that decides which concrete adapter satisfies which port.
+Everything else receives its collaborators. Swapping Gemini for Claude, or a
+real store for a fake, is a change here and nowhere else.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from backend.app.config import Settings
+from backend.app.domain.errors import ConfigurationError
+from backend.app.domain.ports import KnowledgeStore, Scorer, VisionAnalyzer
+from backend.app.services.assessment_service import AssessmentService
+
+
+@dataclass(slots=True)
+class Container:
+    settings: Settings
+    vision: VisionAnalyzer
+    scorer: Scorer
+    knowledge: KnowledgeStore
+    assessments: AssessmentService
+
+
+def build_container(settings: Settings) -> Container:
+    missing = settings.missing_keys()
+    if missing:
+        # Fail at startup with the list, rather than on the first request with
+        # whichever key happened to be checked first.
+        raise ConfigurationError(
+            "missing required credentials: " + ", ".join(missing)
+        )
+
+    vision = _build_vision(settings)
+    scorer = _build_scorer(settings)
+    knowledge = _build_knowledge(settings)
+
+    service = AssessmentService(
+        vision=vision,
+        scorer=scorer,
+        knowledge=knowledge,
+        retrieval_k=settings.retrieval_k,
+        prompt_version=settings.prompt_version,
+        provider_info={
+            "vision_provider": settings.vision_provider,
+            "scoring_provider": settings.scoring_provider,
+            "scoring_model": _scoring_model(settings),
+        },
+    )
+    return Container(
+        settings=settings,
+        vision=vision,
+        scorer=scorer,
+        knowledge=knowledge,
+        assessments=service,
+    )
+
+
+def _scoring_model(settings: Settings) -> str:
+    return (
+        settings.claude_model
+        if settings.scoring_provider == "claude"
+        else settings.gemini_model
+    )
+
+
+def _build_vision(settings: Settings) -> VisionAnalyzer:
+    if settings.vision_provider == "gemini":
+        from backend.app.infra.llm.gemini_vision import GeminiVisionAnalyzer
+
+        return GeminiVisionAnalyzer(
+            api_key=settings.google_api_key, model=settings.gemini_model
+        )
+    raise ConfigurationError(f"unknown vision provider: {settings.vision_provider}")
+
+
+def _build_scorer(settings: Settings) -> Scorer:
+    if settings.scoring_provider == "gemini":
+        from backend.app.infra.llm.gemini_scorer import GeminiScorer
+
+        return GeminiScorer(
+            api_key=settings.google_api_key, model=settings.gemini_model
+        )
+    if settings.scoring_provider == "claude":
+        # Landing in Phase 2 together with the anthropic 1.x upgrade.
+        raise ConfigurationError(
+            "the Claude scorer is not wired up yet; set SCORING_PROVIDER=gemini"
+        )
+    raise ConfigurationError(f"unknown scoring provider: {settings.scoring_provider}")
+
+
+def _build_knowledge(settings: Settings) -> KnowledgeStore:
+    from backend.app.infra.rag.chroma_store import ChromaKnowledgeStore
+
+    return ChromaKnowledgeStore(
+        docs_path=settings.docs_path,
+        persist_path=settings.chroma_path,
+        embedding_model=settings.gemini_embedding_model,
+        google_api_key=settings.google_api_key,
+        chunk_size=settings.chunk_size,
+        chunk_overlap=settings.chunk_overlap,
+        retrieval_k=settings.retrieval_k,
+    )
