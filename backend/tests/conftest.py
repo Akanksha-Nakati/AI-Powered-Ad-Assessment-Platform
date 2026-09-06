@@ -9,6 +9,7 @@ from backend.app.api.v1.router import api_router
 from backend.app.config import Settings
 from backend.app.container import Container
 from backend.app.services.assessment_service import AssessmentService
+from backend.app.services.comparison_service import ComparisonService
 from backend.app.services.knowledge_service import KnowledgeService
 from backend.tests.fakes import (
     FakeAssessmentRepository,
@@ -54,6 +55,16 @@ def make_client(settings):
         repository = repository if repository is not None else FakeAssessmentRepository()
         blobs = blobs if blobs is not None else FakeBlobStore()
         brands = brands if brands is not None else FakeBrandRepository()
+        assessment_service = AssessmentService(
+            vision=vision,
+            scorer=scorer,
+            knowledge=knowledge,
+            repository=repository,
+            blobs=blobs,
+            retrieval_k=settings.retrieval_k,
+            prompt_version=settings.prompt_version,
+            provider_info={"scoring_model": "fake"},
+        )
         container = Container(
             settings=settings,
             vision=vision,
@@ -63,16 +74,8 @@ def make_client(settings):
             brands=brands,
             blobs=blobs,
             knowledge_service=KnowledgeService(brands, knowledge),
-            assessments=AssessmentService(
-                vision=vision,
-                scorer=scorer,
-                knowledge=knowledge,
-                repository=repository,
-                blobs=blobs,
-                retrieval_k=settings.retrieval_k,
-                prompt_version=settings.prompt_version,
-                provider_info={"scoring_model": "fake"},
-            ),
+            comparisons=ComparisonService(assessment_service),
+            assessments=assessment_service,
         )
         return TestClient(build_test_app(container)), container
 

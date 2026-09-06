@@ -118,3 +118,28 @@ class KnowledgeDocument(BaseModel):
     content_sha256: str
     chunk_count: int
     created_at: datetime
+
+
+class ComparisonEntry(BaseModel):
+    """One variant's placement in a comparison."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rank: int = Field(ge=1, description="1 is best.")
+    label: str = Field(description="The uploaded filename, for identification.")
+    assessment: Assessment
+
+
+class Comparison(BaseModel):
+    """Several variants of the same ad, judged together and ranked."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    created_at: datetime
+    metadata: AdMetadata
+    entries: list[ComparisonEntry]
+
+    @property
+    def winner(self) -> ComparisonEntry | None:
+        return self.entries[0] if self.entries else None

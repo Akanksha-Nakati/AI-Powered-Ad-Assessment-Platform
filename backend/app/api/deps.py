@@ -12,6 +12,7 @@ from fastapi import Depends, Request
 
 from backend.app.container import Container
 from backend.app.services.assessment_service import AssessmentService
+from backend.app.services.comparison_service import ComparisonService
 from backend.app.services.knowledge_service import KnowledgeService
 
 
@@ -31,6 +32,13 @@ def get_knowledge_service(
     return container.knowledge_service
 
 
+def get_comparison_service(
+    container: Annotated[Container, Depends(get_container)],
+) -> ComparisonService:
+    return container.comparisons
+
+
 ContainerDep = Annotated[Container, Depends(get_container)]
 AssessmentServiceDep = Annotated[AssessmentService, Depends(get_assessment_service)]
 KnowledgeServiceDep = Annotated[KnowledgeService, Depends(get_knowledge_service)]
+ComparisonServiceDep = Annotated[ComparisonService, Depends(get_comparison_service)]

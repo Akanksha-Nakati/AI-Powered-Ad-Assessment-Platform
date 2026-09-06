@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     chunk_overlap: int = 200
     retrieval_k: int = 4
 
+    # --- Comparison ---
+    #: Bounds concurrent provider calls when several variants are compared.
+    comparison_concurrency: int = 4
+
     # --- Prompting ---
     #: Bumped whenever a prompt changes; part of the assessment cache key so a
     #: prompt edit invalidates cached scorecards instead of serving stale ones.

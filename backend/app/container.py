@@ -20,6 +20,7 @@ from backend.app.domain.ports import (
     VisionAnalyzer,
 )
 from backend.app.services.assessment_service import AssessmentService
+from backend.app.services.comparison_service import ComparisonService
 from backend.app.services.knowledge_service import KnowledgeService
 
 
@@ -33,6 +34,7 @@ class Container:
     brands: BrandRepository
     blobs: BlobStore
     assessments: AssessmentService
+    comparisons: ComparisonService
     knowledge_service: KnowledgeService
     engine: object | None = None
 
@@ -75,6 +77,9 @@ def build_container(settings: Settings) -> Container:
         brands=brands,
         blobs=blobs,
         assessments=service,
+        comparisons=ComparisonService(
+            service, max_concurrency=settings.comparison_concurrency
+        ),
         knowledge_service=KnowledgeService(brands, knowledge),
         engine=engine,
     )
