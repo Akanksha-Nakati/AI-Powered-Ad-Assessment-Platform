@@ -1,0 +1,33 @@
+[tool.ruff]
+line-length = 90
+target-version = "py313"
+src = ["."]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RUF"]
+ignore = [
+    "B008",  # FastAPI's Depends()/File()/Form() defaults are the framework idiom.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/tests/*" = ["SLF001"]
+# Marketing copy inside dedent() blocks; wrapping it would change the corpus.
+"backend/app/infra/rag/seed_docs.py" = ["E501"]
+# Alembic scaffolding and generated migrations: imports must run after the
+# config object exists, so E402/I001 do not apply here.
+"backend/alembic/*" = ["E402", "I001", "E501", "RUF100"]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["backend"]
+exclude = ["backend/alembic/"]
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "backend.tests.*"
+disallow_untyped_defs = false

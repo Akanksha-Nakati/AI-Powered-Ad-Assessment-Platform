@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # Matches .python-version: pydantic-core and Pillow have no 3.14
+          # wheels yet.
+          python-version: "3.13"
+          cache: pip
+
+      - run: pip install -r backend/requirements-dev.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Type check
+        run: mypy
+
+      - name: Test
+        # No credentials: the whole pipeline runs against fakes. If this job
+        # ever needs a real key, a test has started calling a provider.
+        run: pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+        working-directory: frontend
+
+      - name: Type check and build
+        run: npm run build
+        working-directory: frontend
+
+  api-contract:
+    # The frontend's types are generated from the backend schema. If the
+    # committed schema drifts from the code, the generated types are stale and
+    # the type safety they provide is an illusion.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r backend/requirements.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+
+      - name: Regenerate schema and types
+        run: |
+          python -m backend.app.cli openapi
+          npm --prefix frontend run gen:api
+
+      - name: Fail if the committed contract is stale
+        run: |
+          if ! git diff --quiet -- openapi.json frontend/src/lib/api/schema.d.ts; then
+            echo "::error::openapi.json or the generated types are out of date."
+            echo "Run: python -m backend.app.cli openapi && npm --prefix frontend run gen:api"
+            git diff -- openapi.json frontend/src/lib/api/schema.d.ts
+            exit 1
+          fi

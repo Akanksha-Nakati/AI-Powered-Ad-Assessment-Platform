@@ -1,0 +1,41 @@
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Node ---
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# --- Generated / runtime artifacts ---
+backend/storage/
+backend/app/storage/
+*.sqlite3
+*.db
+
+# --- OS / editor ---
+.DS_Store
+.idea/
+.vscode/
+
+# --- Local tooling state ---
+.serena/
+
+# tsc -b build artifacts
+frontend/vite.config.js
+frontend/vite.config.d.ts
+*.tsbuildinfo

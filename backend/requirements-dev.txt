@@ -1,0 +1,7 @@
+-r requirements.txt
+
+pytest>=9,<10
+pytest-asyncio>=1.4,<2
+httpx>=0.28,<0.29
+ruff>=0.9
+mypy>=1.14

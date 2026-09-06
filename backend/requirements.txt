@@ -1,0 +1,29 @@
+fastapi==0.115.6
+uvicorn==0.34.0
+python-multipart==0.0.20
+pydantic==2.10.4
+pydantic-settings==2.7.0
+python-dotenv==1.0.1
+
+# Providers. google-genai replaces the legacy google-generativeai package
+# (frozen at 0.8.6): it has a real async client and response_schema support,
+# which is what lets the adapters use provider-native structured output instead
+# of prompting for JSON and hoping.
+google-genai>=2.0,<3
+anthropic>=1.0,<2
+
+# Retrieval. langchain_community.vectorstores.Chroma is deprecated in favour of
+# the dedicated langchain-chroma package.
+langchain-core>=0.3,<0.4
+langchain-text-splitters>=0.3,<0.4
+langchain-chroma>=0.2,<0.3
+langchain-google-genai>=2.0,<3
+chromadb>=1.0,<2
+
+# Persistence. SQLite locally; swap DATABASE_URL for Postgres (asyncpg) with
+# no code change -- the repository layer only sees an AsyncSession.
+sqlalchemy[asyncio]>=2.0,<3
+aiosqlite>=0.20
+alembic>=1.14
+
+Pillow==11.1.0
