@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { ErrorMessage, Spinner } from "../../components/ui/Feedback";
-import { ScorecardPanel } from "../assess/ScorecardPanel";
+import { Icon } from "../../components/ui/Icon";
 import { api } from "../../lib/api/client";
 import { queryKeys } from "../../lib/query";
+import { ScorecardPanel } from "../assess/ScorecardPanel";
 
 export function AssessmentDetailPage() {
   const { id = "" } = useParams();
@@ -13,20 +14,27 @@ export function AssessmentDetailPage() {
     enabled: Boolean(id),
   });
 
-  if (assessment.isPending) return <Spinner label="Loading assessment..." />;
-  if (assessment.isError)
-    return (
-      <ErrorMessage title="Could not load that assessment">
-        {String(assessment.error)}
-      </ErrorMessage>
-    );
-
   return (
-    <div className="space-y-4">
-      <Link to="/history" className="text-sm text-cyan-300 hover:text-cyan-200">
-        &larr; Back to history
+    <div className="space-y-5">
+      <Link
+        to="/app/history"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft hover:text-ink"
+      >
+        <Icon path="M19 12H5m6 6-6-6 6-6" className="h-4 w-4" />
+        Back to your checks
       </Link>
-      <ScorecardPanel assessment={assessment.data} />
+
+      {assessment.isPending && (
+        <div className="card p-6">
+          <Spinner label="Loading…" />
+        </div>
+      )}
+      {assessment.isError && (
+        <ErrorMessage title="We couldn't find that check">
+          It may have been removed.
+        </ErrorMessage>
+      )}
+      {assessment.data && <ScorecardPanel assessment={assessment.data} />}
     </div>
   );
 }

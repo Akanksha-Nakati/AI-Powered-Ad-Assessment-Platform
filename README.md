@@ -1,12 +1,15 @@
-# AI-Powered Ad Assessment Platform
+# AdCheck
 
-Upload an ad creative and get a scored, cited critique: six criteria out of ten, written
-feedback, concrete recommendations, and the marketing guidance each judgement rests on.
-Add your own brand guidelines and they are cited alongside general best practice. Upload
-several variants and get them ranked.
+Know if your ad works before you pay for it.
+
+Upload an ad creative and get a scored critique in about ten seconds: six criteria out of
+ten, written feedback, concrete fixes, and the marketing guidance each judgement rests on.
+Add your own brand guidelines and every check flags anything off-brand. Upload several
+versions and get them ranked.
 
 Gemini reads the image, a Chroma vector store retrieves relevant guidance, and Claude
-scores the ad against it.
+scores the ad against it. None of that is visible in the product -- the interface speaks
+in marketing terms, not machine-learning ones.
 
 ## How it works
 
@@ -37,7 +40,7 @@ cp .env.example .env   # add GOOGLE_API_KEY and ANTHROPIC_API_KEY
 docker compose up --build
 ```
 
-The UI is on <http://localhost:8080> and the API on <http://localhost:8000>
+The site is on <http://localhost:8080> and the API on <http://localhost:8000>
 (interactive docs at `/docs`).
 
 ### Local
@@ -144,8 +147,23 @@ backend/
   alembic/        migrations
   tests/          fakes and the suite that uses them
 frontend/src/
-  app/            layout and routes
-  features/       assess · compare · history · brands
-  components/ui/  shared presentational pieces
+  app/            marketing + app shells, routes
+  features/       marketing (landing) · assess · compare · history · brands
+  components/ui/  design-system pieces (upload zone, score meter, score ring)
   lib/api/        generated schema, typed client
+  lib/scoring.ts  score bands and the plain-language vocabulary
 ```
+
+Two shells: a marketing site at `/` and the product itself at `/app`.
+
+## Design notes (frontend)
+
+**Score colour never carries meaning alone.** The three bands use a fixed status palette;
+the mid band's amber sits deliberately below 3:1 on white, so every band also ships an
+icon and a word -- *Strong*, *Needs work*, *Weak*. Colour is the fast channel, never the
+only one.
+
+**No machine-learning vocabulary in the interface.** `lib/scoring.ts` is the single place
+where internal names become human ones: criteria get plain labels, source filenames become
+readable references, and the retrieved passages sit behind a collapsed "What this is based
+on" panel rather than a "Citations" list.

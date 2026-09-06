@@ -2,15 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-slate-950 text-slate-50;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans;
+  }
+
+  /* Visible focus for keyboard users on every interactive element. */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    @apply outline-none ring-2 ring-brand-600 ring-offset-2 ring-offset-white;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
-.card {
-  @apply bg-slate-900/70 border border-slate-800 rounded-2xl shadow-xl;
-}
+@layer components {
+  .card {
+    @apply rounded-xl2 border border-line bg-white shadow-card;
+  }
 
-.glass {
-  @apply bg-white/5 backdrop-blur-lg border border-white/10;
-}
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5
+           text-sm font-semibold transition disabled:cursor-not-allowed
+           disabled:opacity-50;
+  }
 
+  .btn-primary {
+    @apply btn bg-brand-600 text-white shadow-brand hover:bg-brand-700
+           active:bg-brand-800;
+  }
+
+  .btn-secondary {
+    @apply btn border border-line bg-white text-ink hover:bg-canvas;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-soft hover:bg-black/[0.04] hover:text-ink;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm
+           text-ink transition focus:border-brand-600 focus:outline-none
+           focus:ring-2 focus:ring-brand-600/20;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-ink;
+  }
+
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
+  }
+}

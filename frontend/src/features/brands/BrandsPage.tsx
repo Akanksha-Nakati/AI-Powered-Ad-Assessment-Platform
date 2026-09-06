@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { EmptyState, ErrorMessage, Spinner } from "../../components/ui/Feedback";
+import { Icon, icons } from "../../components/ui/Icon";
 import { ApiError, api } from "../../lib/api/client";
 import { queryKeys } from "../../lib/query";
 import { BrandDocuments } from "./BrandDocuments";
@@ -14,8 +15,9 @@ export function BrandsPage() {
 
   const create = useMutation({
     mutationFn: () => api.createBrand(name.trim()),
-    onSuccess: () => {
+    onSuccess: (brand) => {
       setName("");
+      setSelected(brand.id);
       queryClient.invalidateQueries({ queryKey: queryKeys.brands });
     },
   });
@@ -28,93 +30,119 @@ export function BrandsPage() {
     },
   });
 
+  const list = brands.data ?? [];
+
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <section className="lg:col-span-1 space-y-4">
-        <div className="card glass p-5 space-y-3">
-          <h2 className="text-lg font-semibold text-white">Add a brand</h2>
-          <p className="text-sm text-slate-400">
-            Upload your own guidelines so assessments cite them alongside general
-            best practice.
-          </p>
-          <form
-            className="flex gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (name.trim()) create.mutate();
-            }}
-          >
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Brand name"
-              className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-cyan-400 focus:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={!name.trim() || create.isPending}
-              className="rounded-xl bg-cyan-500/20 px-4 py-2 font-medium text-cyan-100 hover:bg-cyan-500/30 disabled:opacity-50"
+    <div>
+      <header className="mb-6">
+        <h1 className="text-lg font-semibold text-ink">Brand rules</h1>
+        <p className="mt-1 max-w-2xl text-sm text-ink-soft">
+          Add your brand guidelines once and every ad you check will also be checked
+          against them — tone of voice, colours, logo placement, claims you can't make.
+        </p>
+      </header>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+        <section className="space-y-4">
+          <div className="card p-5">
+            <label className="label" htmlFor="brand-name">
+              Add a brand
+            </label>
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (name.trim()) create.mutate();
+              }}
             >
-              Add
-            </button>
-          </form>
-          {create.isError && (
-            <ErrorMessage title="Could not add brand">
-              {create.error instanceof ApiError
-                ? create.error.message
-                : String(create.error)}
-            </ErrorMessage>
-          )}
-        </div>
+              <input
+                id="brand-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Nimbus Bedding"
+                className="field flex-1"
+              />
+              <button
+                type="submit"
+                disabled={!name.trim() || create.isPending}
+                className="btn-primary shrink-0 px-3"
+                aria-label="Add brand"
+              >
+                <Icon path={icons.plus} className="h-4 w-4" />
+              </button>
+            </form>
+            {create.isError && (
+              <div className="mt-3">
+                <ErrorMessage title="Couldn't add that brand">
+                  {create.error instanceof ApiError
+                    ? create.error.message
+                    : "Please try again."}
+                </ErrorMessage>
+              </div>
+            )}
+          </div>
 
-        <div className="card glass p-5 space-y-3">
-          <h2 className="text-lg font-semibold text-white">Brands</h2>
-          {brands.isPending && <Spinner label="Loading brands..." />}
-          {brands.data?.length === 0 && (
-            <p className="text-sm text-slate-400">No brands yet.</p>
-          )}
-          <ul className="space-y-2">
-            {brands.data?.map((b) => (
-              <li key={b.id}>
-                <div
-                  className={
-                    "flex items-center justify-between rounded-xl px-3 py-2 " +
-                    (selected === b.id ? "bg-cyan-500/15" : "hover:bg-white/5")
-                  }
-                >
-                  <button
-                    type="button"
-                    onClick={() => setSelected(b.id)}
-                    className="flex-1 text-left"
+          {brands.isPending ? (
+            <div className="card p-5">
+              <Spinner label="Loading brands…" />
+            </div>
+          ) : list.length > 0 ? (
+            <ul className="card divide-y divide-line overflow-hidden">
+              {list.map((b) => (
+                <li key={b.id}>
+                  <div
+                    className={
+                      "flex items-center gap-2 px-4 py-3 transition " +
+                      (selected === b.id ? "bg-brand-50" : "hover:bg-canvas")
+                    }
                   >
-                    <span className="text-slate-100">{b.name}</span>
-                    <span className="ml-2 text-xs text-slate-400">
-                      {b.document_count} doc{b.document_count === 1 ? "" : "s"}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => remove.mutate(b.id)}
-                    className="text-xs text-slate-500 hover:text-red-300"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+                    <button
+                      type="button"
+                      onClick={() => setSelected(b.id)}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <span className="block truncate text-sm font-medium text-ink">
+                        {b.name}
+                      </span>
+                      <span className="text-xs text-ink-muted">
+                        {b.document_count === 0
+                          ? "No guidelines yet"
+                          : `${b.document_count} document${b.document_count === 1 ? "" : "s"}`}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => remove.mutate(b.id)}
+                      aria-label={`Remove ${b.name}`}
+                      className="rounded-lg p-1.5 text-ink-muted transition hover:bg-score-weak/10 hover:text-score-weak-ink"
+                    >
+                      <Icon path={icons.trash} className="h-4 w-4" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
 
-      <section className="lg:col-span-2">
-        {selected ? (
-          <BrandDocuments brandId={selected} />
-        ) : (
-          <EmptyState title="Select a brand">
-            Choose a brand to upload its guidelines.
-          </EmptyState>
-        )}
-      </section>
+        <section>
+          {selected ? (
+            <BrandDocuments
+              brandId={selected}
+              brandName={list.find((b) => b.id === selected)?.name ?? "this brand"}
+            />
+          ) : list.length === 0 ? (
+            <EmptyState title="Add your first brand" icon={icons.book}>
+              Give it a name, then upload your guidelines. Anything you'd tell a new
+              designer on their first day works well.
+            </EmptyState>
+          ) : (
+            <EmptyState title="Select a brand" icon={icons.book}>
+              Choose a brand on the left to upload or review its guidelines.
+            </EmptyState>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
