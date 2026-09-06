@@ -1,17 +1,9 @@
-import { ScoreKeys } from "../types";
+import type { Criterion } from "../../lib/api/types";
+import { CRITERION_LABELS } from "../../lib/api/types";
 
 type Props = {
-  label: ScoreKeys;
+  label: Criterion;
   value?: number;
-};
-
-const labels: Record<ScoreKeys, string> = {
-  attention: "Attention",
-  clarity: "Clarity",
-  targeting: "Targeting",
-  cta: "CTA",
-  branding: "Branding",
-  value: "Value",
 };
 
 export function ScoreBar({ label, value }: Props) {
@@ -19,8 +11,10 @@ export function ScoreBar({ label, value }: Props) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm text-slate-200">
-        <span>{labels[label]}</span>
-        <span className="font-semibold">{value !== undefined ? value.toFixed(1) : "-"}/10</span>
+        <span>{CRITERION_LABELS[label]}</span>
+        <span className="font-semibold">
+          {value !== undefined ? value.toFixed(1) : "-"}/10
+        </span>
       </div>
       <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
         <div
@@ -31,4 +25,3 @@ export function ScoreBar({ label, value }: Props) {
     </div>
   );
 }
-

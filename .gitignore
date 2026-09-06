@@ -34,3 +34,8 @@ backend/app/storage/
 
 # --- Local tooling state ---
 .serena/
+
+# tsc -b build artifacts
+frontend/vite.config.js
+frontend/vite.config.d.ts
+*.tsbuildinfo
