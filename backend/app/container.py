@@ -84,9 +84,10 @@ def _build_scorer(settings: Settings) -> Scorer:
             api_key=settings.google_api_key, model=settings.gemini_model
         )
     if settings.scoring_provider == "claude":
-        # Landing in Phase 2 together with the anthropic 1.x upgrade.
-        raise ConfigurationError(
-            "the Claude scorer is not wired up yet; set SCORING_PROVIDER=gemini"
+        from backend.app.infra.llm.claude_scorer import ClaudeScorer
+
+        return ClaudeScorer(
+            api_key=settings.anthropic_api_key, model=settings.claude_model
         )
     raise ConfigurationError(f"unknown scoring provider: {settings.scoring_provider}")
 

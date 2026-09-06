@@ -8,14 +8,13 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from backend.app.domain.criteria import Criterion
 from backend.app.domain.models import (
     AdMetadata,
     AdScorecard,
     Assessment,
-    RetrievedChunk,
     VisualAnalysis,
 )
 from backend.app.domain.ports import KnowledgeStore, Scorer, VisionAnalyzer
@@ -73,7 +72,7 @@ class AssessmentService:
 
         return Assessment(
             id=str(uuid.uuid4()),
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             metadata=metadata,
             scorecard=scorecard,
             visual_analysis=analysis,

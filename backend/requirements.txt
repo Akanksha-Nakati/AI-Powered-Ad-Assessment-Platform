@@ -1,19 +1,23 @@
-# Phase 1 keeps the provider SDKs where they were so the restructure is a pure
-# move-and-rename diff. Phase 2 replaces google-generativeai with google-genai
-# and upgrades anthropic to 1.x for provider-native structured output.
-
-fastapi==0.111.0
-uvicorn==0.30.1
-python-multipart==0.0.9
-pydantic==2.8.2
-pydantic-settings==2.4.0
+fastapi==0.115.6
+uvicorn==0.34.0
+python-multipart==0.0.20
+pydantic==2.10.4
+pydantic-settings==2.7.0
 python-dotenv==1.0.1
 
-langchain==0.2.10
-langchain-community==0.2.9
-langchain-google-genai==1.0.7
-chromadb==0.5.3
-google-generativeai==0.7.2
+# Providers. google-genai replaces the legacy google-generativeai package
+# (frozen at 0.8.6): it has a real async client and response_schema support,
+# which is what lets the adapters use provider-native structured output instead
+# of prompting for JSON and hoping.
+google-genai>=2.0,<3
+anthropic>=1.0,<2
 
-Pillow==10.4.0
-numpy==1.26.4
+# Retrieval. langchain_community.vectorstores.Chroma is deprecated in favour of
+# the dedicated langchain-chroma package.
+langchain-core>=0.3,<0.4
+langchain-text-splitters>=0.3,<0.4
+langchain-chroma>=0.2,<0.3
+langchain-google-genai>=2.0,<3
+chromadb>=1.0,<2
+
+Pillow==11.1.0

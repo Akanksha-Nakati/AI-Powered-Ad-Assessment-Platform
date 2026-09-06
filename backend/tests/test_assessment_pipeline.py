@@ -54,7 +54,7 @@ def test_retrieved_context_reaches_the_scorer(make_client, png_bytes):
 def test_overall_score_is_derived_not_trusted(make_client, png_bytes):
     """A provider that contradicts its own numbers must not set the headline."""
     lying = _full_scorecard(
-        scores={c: 4.0 for c in Criterion},
+        scores=dict.fromkeys(Criterion, 4.0),
         overall_score=9.9,  # inconsistent with the per-criterion scores
     )
     client, _ = make_client(scorer=FakeScorer(scorecard=lying))

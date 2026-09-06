@@ -1,8 +1,13 @@
-"""Gemini scoring adapter -- implements the Scorer port."""
+"""Gemini scoring adapter -- implements the Scorer port.
+
+Kept as the second implementation of Scorer so the port is demonstrably not
+shaped around one vendor, and so scoring still works with only a GOOGLE_API_KEY.
+"""
 
 from __future__ import annotations
 
-import asyncio
+import logging
+from typing import Any
 
 from backend.app.domain.criteria import Criterion
 from backend.app.domain.errors import InvalidProviderOutput, ProviderError
@@ -12,14 +17,23 @@ from backend.app.domain.models import (
     RetrievedChunk,
     VisualAnalysis,
 )
-from backend.app.infra.llm._json import parse_model
-from backend.app.infra.llm.prompts import build_scoring_prompt
+from backend.app.infra.llm.prompts import SYSTEM_INSTRUCTION, build_scoring_prompt
+
+logger = logging.getLogger(__name__)
 
 
 class GeminiScorer:
     def __init__(self, *, api_key: str, model: str) -> None:
         self._api_key = api_key
         self._model = model
+        self._client: Any = None
+
+    def _get_client(self) -> Any:
+        if self._client is None:
+            from google import genai
+
+            self._client = genai.Client(api_key=self._api_key)
+        return self._client
 
     async def score(
         self,
@@ -27,33 +41,38 @@ class GeminiScorer:
         context: list[RetrievedChunk],
         metadata: AdMetadata,
     ) -> AdScorecard:
-        prompt = build_scoring_prompt(analysis, context, metadata)
-        raw = await asyncio.to_thread(self._generate, prompt)
-        scorecard = parse_model(raw, AdScorecard, provider="gemini-scorer")
-        _reject_partial(scorecard, provider="gemini-scorer")
-        return scorecard
+        from google.genai import errors as genai_errors
+        from google.genai import types
 
-    def _generate(self, prompt: str) -> str | None:
-        import google.generativeai as genai
-
+        client = self._get_client()
         try:
-            genai.configure(api_key=self._api_key)
-            model = genai.GenerativeModel(self._model)
-            return model.generate_content(prompt).text
-        except Exception as exc:  # noqa: BLE001 - re-raised as a domain error
+            response = await client.aio.models.generate_content(
+                model=self._model,
+                contents=build_scoring_prompt(analysis, context, metadata),
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_INSTRUCTION,
+                    response_mime_type="application/json",
+                    response_schema=AdScorecard,
+                ),
+            )
+        except genai_errors.APIError as exc:
+            logger.warning("gemini scoring failed: %s", type(exc).__name__)
             raise ProviderError(
                 f"gemini scoring request failed: {type(exc).__name__}"
             ) from exc
 
-
-def _reject_partial(scorecard: AdScorecard, *, provider: str) -> None:
-    """A scorecard missing criteria is a failure, not a low score.
-
-    The old code averaged whatever subset came back, so a provider that scored
-    two of six criteria produced a confident-looking overall figure.
-    """
-    missing = [c.value for c in Criterion if c not in scorecard.scores]
-    if missing:
-        raise InvalidProviderOutput(
-            f"{provider} omitted required criteria: {', '.join(missing)}"
+        parsed = response.parsed
+        if parsed is None:
+            raise InvalidProviderOutput("gemini returned no parsed scorecard")
+        scorecard = (
+            parsed
+            if isinstance(parsed, AdScorecard)
+            else AdScorecard.model_validate(parsed)
         )
+
+        missing = [c.value for c in Criterion if c not in scorecard.scores]
+        if missing:
+            raise InvalidProviderOutput(
+                f"gemini omitted required criteria: {', '.join(missing)}"
+            )
+        return scorecard

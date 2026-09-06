@@ -9,8 +9,17 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
+# Pinned to 3.13: several pinned wheels (pydantic-core, Pillow) have no 3.14
+# builds yet and fall back to compiling from source, which fails without a Rust
+# toolchain. See .python-version.
+PYTHON="${PYTHON:-python3.13}"
+if ! command -v "$PYTHON" >/dev/null 2>&1; then
+  echo "$PYTHON not found. Install Python 3.13 or set PYTHON=/path/to/python3.13." >&2
+  exit 1
+fi
+
 if [ ! -d ".venv" ]; then
-  python3 -m venv .venv
+  "$PYTHON" -m venv .venv
 fi
 
 source .venv/bin/activate

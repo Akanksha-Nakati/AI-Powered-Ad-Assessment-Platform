@@ -1,20 +1,25 @@
-"""Gemini vision adapter -- implements the VisionAnalyzer port."""
+"""Gemini vision adapter -- implements the VisionAnalyzer port.
+
+Uses the current google-genai SDK: a native async client (no thread offloading)
+and ``response_schema``, so the model's reply is schema-constrained rather than
+prompted-for and hopefully-parseable.
+"""
 
 from __future__ import annotations
 
-import asyncio
-import io
+import logging
+from typing import Any
 
-from backend.app.domain.errors import ProviderError
+from backend.app.domain.errors import InvalidProviderOutput, ProviderError
 from backend.app.domain.models import VisualAnalysis
-from backend.app.infra.llm._json import parse_model
+
+logger = logging.getLogger(__name__)
 
 PROMPT = (
-    "You are a marketing creative analyst. Review this ad image and return JSON "
-    "with keys: colors (up to 5, hex where legible else names), text (key copy "
-    "you can read), layout (composition and focal areas), cta (visible "
-    "call-to-action text, empty string if none), insights (up to 3 short "
-    "strength/risk observations). Respond with JSON only."
+    "You are a marketing creative analyst. Describe this ad image: its dominant "
+    "colors, the key copy you can read, the composition and focal areas, the "
+    "visible call-to-action text (empty string if there is none), and up to "
+    "three short observations about its strengths and risks."
 )
 
 
@@ -22,28 +27,42 @@ class GeminiVisionAnalyzer:
     def __init__(self, *, api_key: str, model: str) -> None:
         self._api_key = api_key
         self._model = model
+        self._client: Any = None
+
+    def _get_client(self) -> Any:
+        if self._client is None:
+            from google import genai
+
+            self._client = genai.Client(api_key=self._api_key)
+        return self._client
 
     async def analyze(self, image: bytes, media_type: str) -> VisualAnalysis:
-        # to_thread because google-generativeai's generate_content is blocking.
-        # Calling it directly from the async endpoint (as the old code did)
-        # stalled the event loop for the whole request, which made any
-        # concurrent fan-out pointless.
-        raw = await asyncio.to_thread(self._generate, image)
-        return parse_model(raw, VisualAnalysis, provider="gemini-vision")
+        from google.genai import errors as genai_errors
+        from google.genai import types
 
-    def _generate(self, image: bytes) -> str | None:
-        import google.generativeai as genai
-        from PIL import Image, UnidentifiedImageError
-
+        client = self._get_client()
         try:
-            pil_image = Image.open(io.BytesIO(image))
-            pil_image.load()
-        except (UnidentifiedImageError, OSError) as exc:
-            raise ProviderError("uploaded file is not a readable image") from exc
+            response = await client.aio.models.generate_content(
+                model=self._model,
+                contents=[
+                    types.Part.from_bytes(data=image, mime_type=media_type),
+                    PROMPT,
+                ],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=VisualAnalysis,
+                ),
+            )
+        except genai_errors.APIError as exc:
+            logger.warning("gemini vision failed: %s", type(exc).__name__)
+            raise ProviderError(
+                f"gemini vision request failed: {type(exc).__name__}"
+            ) from exc
 
-        try:
-            genai.configure(api_key=self._api_key)
-            model = genai.GenerativeModel(self._model)
-            return model.generate_content([PROMPT, pil_image]).text
-        except Exception as exc:  # noqa: BLE001 - re-raised as a domain error
-            raise ProviderError(f"gemini vision request failed: {type(exc).__name__}") from exc
+        parsed = response.parsed
+        if parsed is None:
+            raise InvalidProviderOutput("gemini vision returned no parsed analysis")
+        if isinstance(parsed, VisualAnalysis):
+            return parsed
+        # The SDK hands back a dict when it cannot instantiate the schema class.
+        return VisualAnalysis.model_validate(parsed)

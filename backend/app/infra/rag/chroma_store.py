@@ -20,6 +20,7 @@ import hashlib
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 from backend.app.domain.errors import KnowledgeStoreUnavailable
 from backend.app.domain.models import RetrievedChunk
@@ -64,7 +65,7 @@ class ChromaKnowledgeStore:
         self._chunk_size = chunk_size
         self._chunk_overlap = chunk_overlap
         self._retrieval_k = retrieval_k
-        self._store = None
+        self._store: Any = None
         self._lock = asyncio.Lock()
 
     # --- lifecycle -------------------------------------------------------
@@ -75,7 +76,7 @@ class ChromaKnowledgeStore:
                 return
             try:
                 self._store = await asyncio.to_thread(self._build_or_open)
-            except Exception as exc:  # noqa: BLE001 - re-raised as a domain error
+            except Exception as exc:
                 raise KnowledgeStoreUnavailable(
                     "could not initialise the vector store"
                 ) from exc
@@ -93,10 +94,11 @@ class ChromaKnowledgeStore:
             return False
         return recorded.get("fingerprint") == fingerprint
 
-    def _build_or_open(self):
+    def _build_or_open(self) -> Any:
         # Imported lazily so the domain and service layers stay importable
-        # without LangChain installed.
-        from langchain_community.vectorstores import Chroma
+        # without LangChain installed. langchain-chroma replaces the deprecated
+        # langchain_community.vectorstores.Chroma.
+        from langchain_chroma import Chroma
         from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
         self._docs_path.mkdir(parents=True, exist_ok=True)
@@ -112,7 +114,9 @@ class ChromaKnowledgeStore:
 
         has_vectors = any(self._persist_path.glob("*.sqlite3"))
         if has_vectors and self._is_current(fingerprint):
-            logger.info("opening existing vector store (fingerprint %s)", fingerprint[:12])
+            logger.info(
+                "opening existing vector store (fingerprint %s)", fingerprint[:12]
+            )
             return Chroma(
                 embedding_function=embeddings,
                 persist_directory=str(self._persist_path),
@@ -137,9 +141,9 @@ class ChromaKnowledgeStore:
         )
         return store
 
-    def _split_documents(self):
-        from langchain.docstore.document import Document
-        from langchain.text_splitter import RecursiveCharacterTextSplitter
+    def _split_documents(self) -> list[Any]:
+        from langchain_core.documents import Document
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
 
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=self._chunk_size, chunk_overlap=self._chunk_overlap
@@ -173,7 +177,7 @@ class ChromaKnowledgeStore:
             documents = await asyncio.to_thread(
                 self._store.similarity_search, query, limit
             )
-        except Exception as exc:  # noqa: BLE001 - re-raised as a domain error
+        except Exception as exc:
             raise KnowledgeStoreUnavailable("retrieval failed") from exc
 
         return [

@@ -15,7 +15,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -38,7 +37,7 @@ class Settings(BaseSettings):
 
     # --- Provider selection (resolved in app/container.py) ---
     vision_provider: VisionProvider = "gemini"
-    scoring_provider: ScoringProvider = "gemini"
+    scoring_provider: ScoringProvider = "claude"
 
     # --- Models ---
     gemini_model: str = "gemini-1.5-flash"

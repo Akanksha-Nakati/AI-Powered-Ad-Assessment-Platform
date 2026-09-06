@@ -33,7 +33,9 @@ SAMPLE_CHUNKS = [
 
 
 class FakeVisionAnalyzer:
-    def __init__(self, analysis: VisualAnalysis | None = None, error: Exception | None = None):
+    def __init__(
+        self, analysis: VisualAnalysis | None = None, error: Exception | None = None
+    ):
         self._analysis = analysis or SAMPLE_ANALYSIS
         self._error = error
         self.calls: list[tuple[int, str]] = []
@@ -46,7 +48,9 @@ class FakeVisionAnalyzer:
 
 
 class FakeScorer:
-    def __init__(self, scorecard: AdScorecard | None = None, error: Exception | None = None):
+    def __init__(
+        self, scorecard: AdScorecard | None = None, error: Exception | None = None
+    ):
         self._scorecard = scorecard or _full_scorecard()
         self._error = error
         self.received_context: list[RetrievedChunk] = []
@@ -83,7 +87,7 @@ class FakeKnowledgeStore:
 
 
 def _full_scorecard(**overrides) -> AdScorecard:
-    scores = {c: 7.0 for c in Criterion}
+    scores = dict.fromkeys(Criterion, 7.0)
     payload = {
         "scores": scores,
         "overall_score": 7.0,

@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.errors import register_error_handlers
 from backend.app.api.v1.router import api_router
-from backend.app.config import Settings, settings as default_settings
+from backend.app.config import Settings
+from backend.app.config import settings as default_settings
 from backend.app.container import Container, build_container
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             # Warming the store here is what stops every request paying to
             # re-open the collection, as the previous implementation did.
             await container.knowledge.ensure_ready()
-        except Exception:  # noqa: BLE001 - startup must not die on a cold index
+        except Exception:
             logger.exception(
                 "knowledge store failed to initialise; /health will report not ready"
             )
