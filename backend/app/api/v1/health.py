@@ -20,7 +20,7 @@ async def health(container: ContainerDep) -> HealthResponse:
     settings = container.settings
     return HealthResponse(
         status="ok",
-        knowledge_ready=getattr(container.knowledge, "_store", None) is not None,
+        knowledge_ready=getattr(container.knowledge, "is_ready", False),
         vision_provider=settings.vision_provider,
         scoring_provider=settings.scoring_provider,
     )

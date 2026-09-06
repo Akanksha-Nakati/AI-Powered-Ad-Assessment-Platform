@@ -208,3 +208,13 @@ def test_assessments_for_different_brands_are_cached_separately(make_client, png
         )
 
     assert len(vision.calls) == 2
+
+
+def test_health_reports_not_ready_when_the_store_is_down(make_client):
+    """Health reported ready while brand ingestion was broken, because it
+    checked only the global collection."""
+    client, _ = make_client(knowledge=FakeKnowledgeStore(ready=False))
+
+    body = client.get("/api/v1/health").json()
+
+    assert body["knowledge_ready"] is False

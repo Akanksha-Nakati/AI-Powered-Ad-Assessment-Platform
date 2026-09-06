@@ -12,6 +12,8 @@ from typing import Any
 
 from backend.app.domain.errors import InvalidProviderOutput, ProviderError
 from backend.app.domain.models import VisualAnalysis
+from backend.app.infra.llm.gemini_client import build_client
+from backend.app.infra.llm.gemini_schemas import GeminiVisualAnalysis
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +33,7 @@ class GeminiVisionAnalyzer:
 
     def _get_client(self) -> Any:
         if self._client is None:
-            from google import genai
-
-            self._client = genai.Client(api_key=self._api_key)
+            self._client = build_client(self._api_key)
         return self._client
 
     async def analyze(self, image: bytes, media_type: str) -> VisualAnalysis:
@@ -50,11 +50,12 @@ class GeminiVisionAnalyzer:
                 ],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_schema=VisualAnalysis,
+                    response_schema=GeminiVisualAnalysis,
                 ),
             )
         except genai_errors.APIError as exc:
-            logger.warning("gemini vision failed: %s", type(exc).__name__)
+            # The message goes to the log, never to the client.
+            logger.warning("gemini vision failed: %s: %s", type(exc).__name__, exc)
             raise ProviderError(
                 f"gemini vision request failed: {type(exc).__name__}"
             ) from exc
@@ -62,7 +63,7 @@ class GeminiVisionAnalyzer:
         parsed = response.parsed
         if parsed is None:
             raise InvalidProviderOutput("gemini vision returned no parsed analysis")
-        if isinstance(parsed, VisualAnalysis):
-            return parsed
-        # The SDK hands back a dict when it cannot instantiate the schema class.
-        return VisualAnalysis.model_validate(parsed)
+        if not isinstance(parsed, GeminiVisualAnalysis):
+            # The SDK hands back a dict when it cannot instantiate the class.
+            parsed = GeminiVisualAnalysis.model_validate(parsed)
+        return parsed.to_domain()

@@ -12,6 +12,7 @@ export const queryClient = new QueryClient({
 });
 
 export const queryKeys = {
+  health: ["health"] as const,
   assessments: ["assessments"] as const,
   assessment: (id: string) => ["assessments", id] as const,
   brands: ["brands"] as const,

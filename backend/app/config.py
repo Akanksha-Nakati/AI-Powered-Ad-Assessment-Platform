@@ -40,8 +40,14 @@ class Settings(BaseSettings):
     scoring_provider: ScoringProvider = "claude"
 
     # --- Models ---
-    gemini_model: str = "gemini-1.5-flash"
-    gemini_embedding_model: str = "models/text-embedding-004"
+    # Provider model IDs get retired fast. Both values the project originally
+    # shipped with (gemini-1.5-flash, models/text-embedding-004) now 404, and so
+    # does gemini-2.5-flash for new keys. `python -m backend.app.cli models`
+    # lists what the configured key can reach -- note that a model appearing
+    # there is not proof it is callable, since some are listed but closed to new
+    # users; the 404 body names the replacement.
+    gemini_model: str = "gemini-3.6-flash"
+    gemini_embedding_model: str = "models/gemini-embedding-001"
     claude_model: str = "claude-opus-5"
 
     # --- Persistence ---

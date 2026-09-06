@@ -63,7 +63,9 @@ class ClaudeScorer:
         except APIStatusError as exc:
             # Deliberately does not include the provider body -- it can contain
             # request echoes. The detail goes to the log, not the client.
-            logger.warning("claude scoring failed: status=%s", exc.status_code)
+            logger.warning(
+                "claude scoring failed: status=%s: %s", exc.status_code, exc
+            )
             raise ProviderError(
                 f"claude scoring request failed with status {exc.status_code}"
             ) from exc

@@ -67,7 +67,16 @@ function assessmentForm(input: AssessInput, imageField: string): FormData {
   return form;
 }
 
+export type Health = {
+  status: string;
+  knowledge_ready: boolean;
+  vision_provider: string;
+  scoring_provider: string;
+};
+
 export const api = {
+  health: () => request<Health>("/health"),
+
   assess: (input: AssessInput) =>
     request<Assessment>("/assessments", {
       method: "POST",

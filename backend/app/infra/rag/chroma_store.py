@@ -88,7 +88,12 @@ class ChromaKnowledgeStore:
                 return
             try:
                 self._store = await asyncio.to_thread(self._build_or_open)
+                self._brand_store = await asyncio.to_thread(self._open_brand_store)
             except Exception as exc:
+                # Leave both unset so a half-initialised store cannot report
+                # itself ready.
+                self._store = None
+                self._brand_store = None
                 raise KnowledgeStoreUnavailable(
                     "could not initialise the vector store"
                 ) from exc
@@ -191,6 +196,15 @@ class ChromaKnowledgeStore:
             persist_directory=str(self._persist_path),
         )
 
+    @property
+    def is_ready(self) -> bool:
+        """Both collections, not just the global one.
+
+        The health endpoint previously reached in for ``_store`` alone and so
+        reported ready while brand ingestion was still broken.
+        """
+        return self._store is not None and self._brand_store is not None
+
     # --- brand ingestion -------------------------------------------------
 
     async def ingest_brand_document(
@@ -259,9 +273,7 @@ class ChromaKnowledgeStore:
 
         limit = k or self._retrieval_k
         try:
-            documents = await asyncio.to_thread(
-                self._store.similarity_search, query, limit
-            )
+            documents = await asyncio.to_thread(self._search, query, limit, brand_id)
         except Exception as exc:
             raise KnowledgeStoreUnavailable("retrieval failed") from exc
 
@@ -274,3 +286,22 @@ class ChromaKnowledgeStore:
             )
             for doc in documents
         ]
+
+    def _search(self, query: str, limit: int, brand_id: str | None) -> list[Any]:
+        """Global best practice always; the brand's own guidelines as well.
+
+        The budget is split rather than taking a single top-k across both
+        corpora: a brand with a large document set would otherwise crowd the
+        general guidance out of the results entirely, and citing both is the
+        point of the tool.
+        """
+        if brand_id is None or self._brand_store is None:
+            return self._store.similarity_search(query, limit)
+
+        brand_hits = self._brand_store.similarity_search(
+            query, max(1, limit // 2), filter={"brand_id": brand_id}
+        )
+        global_hits = self._store.similarity_search(
+            query, max(1, limit - len(brand_hits))
+        )
+        return brand_hits + global_hits

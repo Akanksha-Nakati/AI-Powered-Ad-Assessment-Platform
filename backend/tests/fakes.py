@@ -82,6 +82,10 @@ class FakeKnowledgeStore:
         self.removed_brands: list[str] = []
         self.ensure_ready_calls = 0
 
+    @property
+    def is_ready(self) -> bool:
+        return self._ready
+
     async def ensure_ready(self) -> None:
         self.ensure_ready_calls += 1
 
