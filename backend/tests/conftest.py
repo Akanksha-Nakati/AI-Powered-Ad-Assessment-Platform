@@ -9,9 +9,11 @@ from backend.app.api.v1.router import api_router
 from backend.app.config import Settings
 from backend.app.container import Container
 from backend.app.services.assessment_service import AssessmentService
+from backend.app.services.knowledge_service import KnowledgeService
 from backend.tests.fakes import (
     FakeAssessmentRepository,
     FakeBlobStore,
+    FakeBrandRepository,
     FakeKnowledgeStore,
     FakeScorer,
     FakeVisionAnalyzer,
@@ -44,19 +46,23 @@ def make_client(settings):
         knowledge: FakeKnowledgeStore | None = None,
         repository: FakeAssessmentRepository | None = None,
         blobs: FakeBlobStore | None = None,
+        brands: FakeBrandRepository | None = None,
     ) -> tuple[TestClient, Container]:
         vision = vision or FakeVisionAnalyzer()
         scorer = scorer or FakeScorer()
         knowledge = knowledge or FakeKnowledgeStore()
         repository = repository if repository is not None else FakeAssessmentRepository()
         blobs = blobs if blobs is not None else FakeBlobStore()
+        brands = brands if brands is not None else FakeBrandRepository()
         container = Container(
             settings=settings,
             vision=vision,
             scorer=scorer,
             knowledge=knowledge,
             repository=repository,
+            brands=brands,
             blobs=blobs,
+            knowledge_service=KnowledgeService(brands, knowledge),
             assessments=AssessmentService(
                 vision=vision,
                 scorer=scorer,

@@ -19,6 +19,10 @@ class NotFoundError(DomainError):
     """A requested entity does not exist."""
 
 
+class ConflictError(DomainError):
+    """The request conflicts with existing state (e.g. a duplicate name)."""
+
+
 class ProviderError(DomainError):
     """An upstream model provider failed or was unreachable."""
 

@@ -22,6 +22,7 @@ async def create_assessment(
     platform: str = Form(...),
     industry: str = Form(...),
     ad_type: str = Form(...),
+    brand_id: str | None = Form(None),
 ) -> Assessment:
     media_type = (ad_image.content_type or "").lower()
     if media_type not in ALLOWED_MEDIA_TYPES:
@@ -47,6 +48,7 @@ async def create_assessment(
         image=image,
         media_type=media_type,
         metadata=AdMetadata(platform=platform, industry=industry, ad_type=ad_type),
+        brand_id=brand_id,
     )
 
 

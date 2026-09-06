@@ -7,11 +7,15 @@ thing the previous architecture made impossible.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from backend.app.domain.criteria import Criterion
-from backend.app.domain.errors import KnowledgeStoreUnavailable
+from backend.app.domain.errors import ConflictError, KnowledgeStoreUnavailable
 from backend.app.domain.models import (
     AdMetadata,
     AdScorecard,
+    Brand,
+    KnowledgeDocument,
     RetrievedChunk,
     VisualAnalysis,
 )
@@ -72,6 +76,10 @@ class FakeKnowledgeStore:
         self._chunks = chunks if chunks is not None else SAMPLE_CHUNKS
         self._ready = ready
         self.queries: list[str] = []
+        self.retrieved_brand_ids: list[str | None] = []
+        self.brand_chunks: dict[str, list[RetrievedChunk]] = {}
+        self.ingested: list[tuple[str, str, int]] = []
+        self.removed_brands: list[str] = []
         self.ensure_ready_calls = 0
 
     async def ensure_ready(self) -> None:
@@ -83,7 +91,28 @@ class FakeKnowledgeStore:
         if not self._ready:
             raise KnowledgeStoreUnavailable("fake store is not ready")
         self.queries.append(query)
-        return self._chunks[: k or len(self._chunks)]
+        self.retrieved_brand_ids.append(brand_id)
+        chunks = self._chunks[: k or len(self._chunks)]
+        if brand_id is not None:
+            chunks = self.brand_chunks.get(brand_id, []) + chunks
+        return chunks
+
+    async def ingest_brand_document(
+        self, brand_id: str, filename: str, content: str
+    ) -> int:
+        if not self._ready:
+            raise KnowledgeStoreUnavailable("fake store is not ready")
+        chunks = [c for c in content.split("\n\n") if c.strip()]
+        self.brand_chunks.setdefault(brand_id, []).extend(
+            RetrievedChunk(text=c, source=filename, chunk=i, brand_id=brand_id)
+            for i, c in enumerate(chunks)
+        )
+        self.ingested.append((brand_id, filename, len(chunks)))
+        return len(chunks)
+
+    async def remove_brand(self, brand_id: str) -> None:
+        self.brand_chunks.pop(brand_id, None)
+        self.removed_brands.append(brand_id)
 
 
 def _full_scorecard(**overrides) -> AdScorecard:
@@ -134,9 +163,83 @@ class FakeAssessmentRepository:
     async def get(self, assessment_id: str):
         return next((a for a in self.saved if a.id == assessment_id), None)
 
-    async def list(self, *, limit: int = 20, offset: int = 0) -> list:
+    async def list_recent(self, *, limit: int = 20, offset: int = 0) -> list:
         newest_first = list(reversed(self.saved))
         return newest_first[offset : offset + limit]
 
     async def find_cached(self, cache_key: str):
         return self.by_cache_key.get(cache_key)
+
+
+class FakeBrandRepository:
+    """In-memory brand and document store."""
+
+    def __init__(self) -> None:
+        self.brands: dict[str, Brand] = {}
+        self.documents: dict[str, list[KnowledgeDocument]] = {}
+        self._counter = 0
+
+    def _next_id(self, prefix: str) -> str:
+        self._counter += 1
+        return f"{prefix}-{self._counter}"
+
+    async def create(self, name: str) -> Brand:
+        if any(b.name == name for b in self.brands.values()):
+            raise ConflictError(f"a brand named {name!r} already exists")
+        brand = Brand(id=self._next_id("brand"), name=name, created_at=datetime.now(UTC))
+        self.brands[brand.id] = brand
+        return brand
+
+    async def get(self, brand_id: str) -> Brand | None:
+        brand = self.brands.get(brand_id)
+        if brand is None:
+            return None
+        return brand.model_copy(
+            update={"document_count": len(self.documents.get(brand_id, []))}
+        )
+
+    async def get_by_name(self, name: str) -> Brand | None:
+        return next((b for b in self.brands.values() if b.name == name), None)
+
+    async def list_brands(self) -> list[Brand]:
+        return sorted(self.brands.values(), key=lambda b: b.name)
+
+    async def delete(self, brand_id: str) -> bool:
+        self.documents.pop(brand_id, None)
+        return self.brands.pop(brand_id, None) is not None
+
+    async def add_document(
+        self,
+        brand_id: str,
+        filename: str,
+        content: str,
+        content_sha256: str,
+        chunk_count: int,
+    ) -> KnowledgeDocument:
+        docs = self.documents.setdefault(brand_id, [])
+        docs[:] = [d for d in docs if d.filename != filename]
+        doc = KnowledgeDocument(
+            id=self._next_id("doc"),
+            brand_id=brand_id,
+            filename=filename,
+            content_sha256=content_sha256,
+            chunk_count=chunk_count,
+            created_at=datetime.now(UTC),
+        )
+        docs.append(doc)
+        return doc
+
+    async def list_documents(self, brand_id: str) -> list[KnowledgeDocument]:
+        return sorted(self.documents.get(brand_id, []), key=lambda d: d.filename)
+
+    async def find_document_by_hash(
+        self, brand_id: str, content_sha256: str
+    ) -> KnowledgeDocument | None:
+        return next(
+            (
+                d
+                for d in self.documents.get(brand_id, [])
+                if d.content_sha256 == content_sha256
+            ),
+            None,
+        )

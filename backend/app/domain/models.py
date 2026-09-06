@@ -94,3 +94,27 @@ class Assessment(BaseModel):
         default_factory=dict,
         description="Which models and prompt version produced this, for cache keying.",
     )
+
+
+class Brand(BaseModel):
+    """An advertiser whose own guidelines augment the global best practices."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str
+    created_at: datetime
+    document_count: int = 0
+
+
+class KnowledgeDocument(BaseModel):
+    """One ingested brand document."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    brand_id: str
+    filename: str
+    content_sha256: str
+    chunk_count: int
+    created_at: datetime

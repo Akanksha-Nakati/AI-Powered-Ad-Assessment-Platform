@@ -187,7 +187,7 @@ async def test_sql_list_is_newest_first(sql_repo):
         )
     )
 
-    rows = await sql_repo.list()
+    rows = await sql_repo.list_recent()
 
     assert [r.provider_info["cache_key"] for r in rows] == ["new", "old"]
 

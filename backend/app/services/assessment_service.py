@@ -144,7 +144,7 @@ class AssessmentService:
     async def history(self, *, limit: int = 20, offset: int = 0) -> list[Assessment]:
         if self._repository is None:
             return []
-        return await self._repository.list(limit=limit, offset=offset)
+        return await self._repository.list_recent(limit=limit, offset=offset)
 
 
 def _with_derived_overall(scorecard: AdScorecard) -> AdScorecard:

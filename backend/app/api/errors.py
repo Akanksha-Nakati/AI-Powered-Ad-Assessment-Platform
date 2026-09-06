@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 
 from backend.app.domain.errors import (
     ConfigurationError,
+    ConflictError,
     DomainError,
     InvalidProviderOutput,
     KnowledgeStoreUnavailable,
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 #: Most specific first -- the first matching entry wins.
 _STATUS_MAP: list[tuple[type[DomainError], int, str]] = [
     (NotFoundError, status.HTTP_404_NOT_FOUND, "Not found."),
+    (ConflictError, status.HTTP_409_CONFLICT, "That already exists."),
     (
         InvalidProviderOutput,
         status.HTTP_502_BAD_GATEWAY,

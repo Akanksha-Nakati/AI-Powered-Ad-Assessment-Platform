@@ -11,6 +11,13 @@ Fixes three defects in the previous backend/services/rag.py:
   silently invalidates every vector -- similarity against a differently-embedded
   index is meaningless rather than merely wrong. The hash covers the model name,
   so a model change forces a rebuild instead of quietly degrading retrieval.
+
+Two collections, not one per brand: a global ``best_practices`` corpus and a
+single ``brand_knowledge`` collection whose chunks carry a ``brand_id`` and are
+retrieved behind a metadata filter. A collection per brand would multiply
+per-collection overhead to buy an isolation guarantee this application does not
+need. Retrieval queries both and merges, so a brand's own guidelines and general
+best practice can each earn a citation.
 """
 
 from __future__ import annotations
@@ -30,6 +37,9 @@ logger = logging.getLogger(__name__)
 
 #: Written next to the vectors so a later process can tell what produced them.
 MANIFEST_NAME = "index_manifest.json"
+
+GLOBAL_COLLECTION = "best_practices"
+BRAND_COLLECTION = "brand_knowledge"
 
 
 def corpus_fingerprint(docs_path: Path, embedding_model: str, chunk_size: int,
@@ -66,6 +76,8 @@ class ChromaKnowledgeStore:
         self._chunk_overlap = chunk_overlap
         self._retrieval_k = retrieval_k
         self._store: Any = None
+        self._brand_store: Any = None
+        self._embeddings: Any = None
         self._lock = asyncio.Lock()
 
     # --- lifecycle -------------------------------------------------------
@@ -111,6 +123,7 @@ class ChromaKnowledgeStore:
         embeddings = GoogleGenerativeAIEmbeddings(
             google_api_key=self._google_api_key, model=self._embedding_model
         )
+        self._embeddings = embeddings
 
         has_vectors = any(self._persist_path.glob("*.sqlite3"))
         if has_vectors and self._is_current(fingerprint):
@@ -118,6 +131,7 @@ class ChromaKnowledgeStore:
                 "opening existing vector store (fingerprint %s)", fingerprint[:12]
             )
             return Chroma(
+                collection_name=GLOBAL_COLLECTION,
                 embedding_function=embeddings,
                 persist_directory=str(self._persist_path),
             )
@@ -126,6 +140,7 @@ class ChromaKnowledgeStore:
         store = Chroma.from_documents(
             self._split_documents(),
             embedding=embeddings,
+            collection_name=GLOBAL_COLLECTION,
             persist_directory=str(self._persist_path),
         )
         self._manifest_path().write_text(
@@ -160,6 +175,76 @@ class ChromaKnowledgeStore:
         if not documents:
             raise KnowledgeStoreUnavailable("no marketing documents to index")
         return documents
+
+    def _open_brand_store(self) -> Any:
+        """The brand collection is opened, never rebuilt.
+
+        Brand documents are user data: unlike the seed corpus they cannot be
+        regenerated from the repository, so the fingerprint-triggered rebuild
+        that applies to the global collection must not touch them.
+        """
+        from langchain_chroma import Chroma
+
+        return Chroma(
+            collection_name=BRAND_COLLECTION,
+            embedding_function=self._embeddings,
+            persist_directory=str(self._persist_path),
+        )
+
+    # --- brand ingestion -------------------------------------------------
+
+    async def ingest_brand_document(
+        self, brand_id: str, filename: str, content: str
+    ) -> int:
+        if self._brand_store is None:
+            raise KnowledgeStoreUnavailable("vector store has not been initialised")
+        try:
+            return await asyncio.to_thread(
+                self._ingest, brand_id, filename, content
+            )
+        except KnowledgeStoreUnavailable:
+            raise
+        except Exception as exc:
+            raise KnowledgeStoreUnavailable("brand ingestion failed") from exc
+
+    def _ingest(self, brand_id: str, filename: str, content: str) -> int:
+        from langchain_core.documents import Document
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=self._chunk_size, chunk_overlap=self._chunk_overlap
+        )
+        chunks = splitter.split_text(content)
+        if not chunks:
+            return 0
+
+        documents = [
+            Document(
+                page_content=chunk,
+                metadata={
+                    "source": filename,
+                    "chunk": index,
+                    "brand_id": brand_id,
+                    "scope": "brand",
+                },
+            )
+            for index, chunk in enumerate(chunks)
+        ]
+        # Deterministic ids so re-ingesting the same document replaces its
+        # chunks instead of accumulating duplicates alongside them.
+        ids = [f"{brand_id}:{filename}:{index}" for index in range(len(chunks))]
+        self._brand_store.add_documents(documents, ids=ids)
+        return len(chunks)
+
+    async def remove_brand(self, brand_id: str) -> None:
+        if self._brand_store is None:
+            raise KnowledgeStoreUnavailable("vector store has not been initialised")
+        try:
+            await asyncio.to_thread(
+                self._brand_store.delete, where={"brand_id": brand_id}
+            )
+        except Exception as exc:
+            raise KnowledgeStoreUnavailable("brand deletion failed") from exc
 
     # --- retrieval -------------------------------------------------------
 

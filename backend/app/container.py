@@ -14,11 +14,13 @@ from backend.app.domain.errors import ConfigurationError
 from backend.app.domain.ports import (
     AssessmentRepository,
     BlobStore,
+    BrandRepository,
     KnowledgeStore,
     Scorer,
     VisionAnalyzer,
 )
 from backend.app.services.assessment_service import AssessmentService
+from backend.app.services.knowledge_service import KnowledgeService
 
 
 @dataclass(slots=True)
@@ -28,8 +30,10 @@ class Container:
     scorer: Scorer
     knowledge: KnowledgeStore
     repository: AssessmentRepository
+    brands: BrandRepository
     blobs: BlobStore
     assessments: AssessmentService
+    knowledge_service: KnowledgeService
     engine: object | None = None
 
 
@@ -45,7 +49,7 @@ def build_container(settings: Settings) -> Container:
     vision = _build_vision(settings)
     scorer = _build_scorer(settings)
     knowledge = _build_knowledge(settings)
-    engine, repository = _build_repository(settings)
+    engine, repository, brands = _build_repositories(settings)
     blobs = _build_blobs(settings)
 
     service = AssessmentService(
@@ -68,8 +72,10 @@ def build_container(settings: Settings) -> Container:
         scorer=scorer,
         knowledge=knowledge,
         repository=repository,
+        brands=brands,
         blobs=blobs,
         assessments=service,
+        knowledge_service=KnowledgeService(brands, knowledge),
         engine=engine,
     )
 
@@ -122,12 +128,18 @@ def _build_knowledge(settings: Settings) -> KnowledgeStore:
     )
 
 
-def _build_repository(settings: Settings) -> tuple[object, AssessmentRepository]:
-    from backend.app.infra.db.repositories import SqlAssessmentRepository
+def _build_repositories(
+    settings: Settings,
+) -> tuple[object, AssessmentRepository, BrandRepository]:
+    from backend.app.infra.db.repositories import (
+        SqlAssessmentRepository,
+        SqlBrandRepository,
+    )
     from backend.app.infra.db.session import create_engine, create_session_factory
 
     engine = create_engine(settings.database_url)
-    return engine, SqlAssessmentRepository(create_session_factory(engine))
+    factory = create_session_factory(engine)
+    return engine, SqlAssessmentRepository(factory), SqlBrandRepository(factory)
 
 
 def _build_blobs(settings: Settings) -> BlobStore:

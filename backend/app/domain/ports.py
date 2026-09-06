@@ -16,6 +16,8 @@ from backend.app.domain.models import (
     AdMetadata,
     AdScorecard,
     Assessment,
+    Brand,
+    KnowledgeDocument,
     RetrievedChunk,
     VisualAnalysis,
 )
@@ -66,10 +68,22 @@ class KnowledgeStore(Protocol):
         k: int | None = None,
         brand_id: str | None = None,
     ) -> list[RetrievedChunk]:
-        """
+        """Retrieve guidance, merging global best practice with brand-specific
+        documents when ``brand_id`` is given.
+
         Raises:
             KnowledgeStoreUnavailable: the store is not ready or failed.
         """
+        ...
+
+    async def ingest_brand_document(
+        self, brand_id: str, filename: str, content: str
+    ) -> int:
+        """Chunk and embed one brand document. Returns the chunk count."""
+        ...
+
+    async def remove_brand(self, brand_id: str) -> None:
+        """Drop every chunk belonging to a brand."""
         ...
 
 
@@ -98,10 +112,44 @@ class AssessmentRepository(Protocol):
 
     async def get(self, assessment_id: str) -> Assessment | None: ...
 
-    async def list(self, *, limit: int = 20, offset: int = 0) -> list[Assessment]:
+    async def list_recent(
+        self, *, limit: int = 20, offset: int = 0
+    ) -> list[Assessment]:
         """Most recent first."""
         ...
 
     async def find_cached(self, cache_key: str) -> Assessment | None:
         """Return a previous assessment for an identical request, if any."""
+        ...
+
+
+@runtime_checkable
+class BrandRepository(Protocol):
+    """Persistence for brands and the documents ingested for them."""
+
+    async def create(self, name: str) -> Brand: ...
+
+    async def get(self, brand_id: str) -> Brand | None: ...
+
+    async def get_by_name(self, name: str) -> Brand | None: ...
+
+    async def list_brands(self) -> list[Brand]: ...
+
+    async def delete(self, brand_id: str) -> bool: ...
+
+    async def add_document(
+        self,
+        brand_id: str,
+        filename: str,
+        content: str,
+        content_sha256: str,
+        chunk_count: int,
+    ) -> KnowledgeDocument: ...
+
+    async def list_documents(self, brand_id: str) -> list[KnowledgeDocument]: ...
+
+    async def find_document_by_hash(
+        self, brand_id: str, content_sha256: str
+    ) -> KnowledgeDocument | None:
+        """Used to skip re-embedding a document that has not changed."""
         ...
