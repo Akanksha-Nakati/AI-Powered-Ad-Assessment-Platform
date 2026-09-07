@@ -9,7 +9,7 @@ three cannot drift.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -152,3 +152,81 @@ class Comparison(BaseModel):
     @property
     def winner(self) -> ComparisonEntry | None:
         return self.entries[0] if self.entries else None
+
+
+class DataSourceConnection(BaseModel):
+    """A configured link to a user's own SQL data warehouse.
+
+    Deliberately excludes the connection URI and query text -- those are
+    write-only, encrypted at rest, and never modeled as something the API can
+    hand back. See PerformanceService.get_connection_secret's docstring.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str
+    dialect: str = Field(
+        description="A display label only (Snowflake/BigQuery/Postgres/...) -- "
+        "no backend logic branches on it."
+    )
+    created_at: datetime
+    last_tested_at: datetime | None = None
+    last_test_ok: bool | None = None
+
+
+class RawMetricRow(BaseModel):
+    """One row as returned by a PerformanceSource, before the service stamps
+    connection_id/fetched_at/id onto it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    external_ad_id: str
+    ctr: float | None = None
+    spend: float | None = None
+    conversions: int | None = None
+    impressions: int | None = None
+    metric_date: date
+
+
+class PerformanceMetric(RawMetricRow):
+    """A persisted performance-metric row."""
+
+    id: str
+    connection_id: str
+    fetched_at: datetime
+
+
+class CorrelationPoint(BaseModel):
+    """One matched (our assessment, their performance) pair."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    assessment_id: str
+    external_ad_id: str
+    overall_score: float
+    avg_ctr: float | None
+    total_spend: float | None
+    total_conversions: int | None
+    sample_size: int = Field(description="How many metric rows this point aggregates.")
+
+
+class CorrelationResult(BaseModel):
+    """Does the creative score predict real performance, for one connection."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    points: list[CorrelationPoint] = Field(default_factory=list)
+    pearson_r: float | None = Field(
+        default=None,
+        description="None below 2 matched points or when either axis has zero "
+        "variance -- the coefficient is undefined there, not just noisy.",
+    )
+    matched_count: int
+    unmatched_assessments: int = Field(
+        description="Assessments tagged with an external_ad_id that no "
+        "warehouse row shares."
+    )
+    unmatched_metrics: int = Field(
+        description="Warehouse external_ad_ids that no assessment is tagged with."
+    )

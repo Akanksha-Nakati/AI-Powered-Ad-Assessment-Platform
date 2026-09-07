@@ -495,6 +495,271 @@
           }
         }
       }
+    },
+    "/api/v1/data-sources": {
+      "get": {
+        "tags": [
+          "data-sources"
+        ],
+        "summary": "List Data Sources",
+        "operationId": "list_data_sources_api_v1_data_sources_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DataSourceConnection"
+                  },
+                  "type": "array",
+                  "title": "Response List Data Sources Api V1 Data Sources Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "data-sources"
+        ],
+        "summary": "Create Data Source",
+        "operationId": "create_data_source_api_v1_data_sources_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDataSourceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSourceConnection"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/data-sources/{connection_id}": {
+      "get": {
+        "tags": [
+          "data-sources"
+        ],
+        "summary": "Get Data Source",
+        "operationId": "get_data_source_api_v1_data_sources__connection_id__get",
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSourceConnection"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "data-sources"
+        ],
+        "summary": "Delete Data Source",
+        "operationId": "delete_data_source_api_v1_data_sources__connection_id__delete",
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/data-sources/{connection_id}/test": {
+      "post": {
+        "tags": [
+          "data-sources"
+        ],
+        "summary": "Test Data Source",
+        "operationId": "test_data_source_api_v1_data_sources__connection_id__test_post",
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSourceConnection"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/data-sources/{connection_id}/refresh": {
+      "post": {
+        "tags": [
+          "data-sources"
+        ],
+        "summary": "Refresh Data Source",
+        "operationId": "refresh_data_source_api_v1_data_sources__connection_id__refresh_post",
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/data-sources/{connection_id}/correlation": {
+      "get": {
+        "tags": [
+          "data-sources"
+        ],
+        "summary": "Get Correlation",
+        "operationId": "get_correlation_api_v1_data_sources__connection_id__correlation_get",
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorrelationResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -831,6 +1096,119 @@
         "title": "ComparisonEntry",
         "description": "One variant's placement in a comparison."
       },
+      "CorrelationPoint": {
+        "properties": {
+          "assessment_id": {
+            "type": "string",
+            "title": "Assessment Id"
+          },
+          "external_ad_id": {
+            "type": "string",
+            "title": "External Ad Id"
+          },
+          "overall_score": {
+            "type": "number",
+            "title": "Overall Score"
+          },
+          "avg_ctr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Ctr"
+          },
+          "total_spend": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Spend"
+          },
+          "total_conversions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Conversions"
+          },
+          "sample_size": {
+            "type": "integer",
+            "title": "Sample Size",
+            "description": "How many metric rows this point aggregates."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "assessment_id",
+          "external_ad_id",
+          "overall_score",
+          "avg_ctr",
+          "total_spend",
+          "total_conversions",
+          "sample_size"
+        ],
+        "title": "CorrelationPoint",
+        "description": "One matched (our assessment, their performance) pair."
+      },
+      "CorrelationResult": {
+        "properties": {
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/CorrelationPoint"
+            },
+            "type": "array",
+            "title": "Points"
+          },
+          "pearson_r": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pearson R",
+            "description": "None below 2 matched points or when either axis has zero variance -- the coefficient is undefined there, not just noisy."
+          },
+          "matched_count": {
+            "type": "integer",
+            "title": "Matched Count"
+          },
+          "unmatched_assessments": {
+            "type": "integer",
+            "title": "Unmatched Assessments",
+            "description": "Assessments tagged with an external_ad_id that no warehouse row shares."
+          },
+          "unmatched_metrics": {
+            "type": "integer",
+            "title": "Unmatched Metrics",
+            "description": "Warehouse external_ad_ids that no assessment is tagged with."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "matched_count",
+          "unmatched_assessments",
+          "unmatched_metrics"
+        ],
+        "title": "CorrelationResult",
+        "description": "Does the creative score predict real performance, for one connection."
+      },
       "CreateBrandRequest": {
         "properties": {
           "name": {
@@ -846,6 +1224,43 @@
         ],
         "title": "CreateBrandRequest"
       },
+      "CreateDataSourceRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "dialect": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Dialect",
+            "description": "A display label only (Snowflake/BigQuery/Postgres/...)."
+          },
+          "connection_uri": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Connection Uri",
+            "description": "Write-only. Never returned by this or any other endpoint."
+          },
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Query",
+            "description": "Must return columns: external_ad_id, ctr, spend, conversions, impressions, metric_date."
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "dialect",
+          "connection_uri",
+          "query"
+        ],
+        "title": "CreateDataSourceRequest"
+      },
       "Criterion": {
         "type": "string",
         "enum": [
@@ -857,6 +1272,61 @@
           "value"
         ],
         "title": "Criterion"
+      },
+      "DataSourceConnection": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "dialect": {
+            "type": "string",
+            "title": "Dialect",
+            "description": "A display label only (Snowflake/BigQuery/Postgres/...) -- no backend logic branches on it."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "last_tested_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Tested At"
+          },
+          "last_test_ok": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Test Ok"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "dialect",
+          "created_at"
+        ],
+        "title": "DataSourceConnection",
+        "description": "A configured link to a user's own SQL data warehouse.\n\nDeliberately excludes the connection URI and query text -- those are\nwrite-only, encrypted at rest, and never modeled as something the API can\nhand back. See PerformanceService.get_connection_secret's docstring."
       },
       "HTTPValidationError": {
         "properties": {
@@ -939,6 +1409,19 @@
         ],
         "title": "KnowledgeDocument",
         "description": "One ingested brand document."
+      },
+      "RefreshResult": {
+        "properties": {
+          "rows_fetched": {
+            "type": "integer",
+            "title": "Rows Fetched"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rows_fetched"
+        ],
+        "title": "RefreshResult"
       },
       "RetrievedChunk": {
         "properties": {

@@ -19,7 +19,10 @@ from backend.app.domain.models import (
     AdMetadata,
     AdScorecard,
     Brand,
+    DataSourceConnection,
     KnowledgeDocument,
+    PerformanceMetric,
+    RawMetricRow,
     RetrievedChunk,
     VisualAnalysis,
 )
@@ -207,6 +210,9 @@ class FakeAssessmentRepository:
         wanted = set(external_ad_ids)
         return [a for a in self.saved if a.external_ad_id in wanted]
 
+    async def list_tagged(self) -> list:
+        return [a for a in self.saved if a.external_ad_id is not None]
+
 
 class FakeBrandRepository:
     """In-memory brand and document store."""
@@ -280,3 +286,109 @@ class FakeBrandRepository:
             ),
             None,
         )
+
+
+class FakePerformanceSource:
+    """In-memory stand-in for PerformanceSource.
+
+    See test_sql_connector.py for the real GenericSqlConnector tested against
+    a real (if disposable) SQLite database -- the lesson from the
+    brand-retrieval bug is that this fake being correct proves nothing about
+    the adapter it stands in for.
+    """
+
+    def __init__(
+        self, rows: list[RawMetricRow] | None = None, error: Exception | None = None
+    ) -> None:
+        self._rows = rows if rows is not None else []
+        self._error = error
+        self.test_calls: list[tuple[str, str]] = []
+        self.fetch_calls: list[tuple[str, str]] = []
+
+    async def test_connection(self, connection_uri: str, query: str) -> None:
+        self.test_calls.append((connection_uri, query))
+        if self._error:
+            raise self._error
+
+    async def fetch_metrics(
+        self, connection_uri: str, query: str
+    ) -> list[RawMetricRow]:
+        self.fetch_calls.append((connection_uri, query))
+        if self._error:
+            raise self._error
+        return self._rows
+
+
+class FakeDataSourceRepository:
+    """In-memory data-source connection and metric store."""
+
+    def __init__(self) -> None:
+        self.connections: dict[str, DataSourceConnection] = {}
+        self._secrets: dict[str, tuple[str, str]] = {}
+        self.metrics: dict[str, list[PerformanceMetric]] = {}
+        self._counter = 0
+
+    def _next_id(self, prefix: str) -> str:
+        self._counter += 1
+        return f"{prefix}-{self._counter}"
+
+    async def create(
+        self, name: str, dialect: str, connection_uri: str, query: str
+    ) -> DataSourceConnection:
+        if any(c.name == name for c in self.connections.values()):
+            raise ConflictError(f"a data source named {name!r} already exists")
+        connection = DataSourceConnection(
+            id=self._next_id("ds"),
+            name=name,
+            dialect=dialect,
+            created_at=datetime.now(UTC),
+        )
+        self.connections[connection.id] = connection
+        self._secrets[connection.id] = (connection_uri, query)
+        return connection
+
+    async def get(self, connection_id: str) -> DataSourceConnection | None:
+        return self.connections.get(connection_id)
+
+    async def list_connections(self) -> list[DataSourceConnection]:
+        return sorted(self.connections.values(), key=lambda c: c.name)
+
+    async def delete(self, connection_id: str) -> bool:
+        self._secrets.pop(connection_id, None)
+        self.metrics.pop(connection_id, None)
+        return self.connections.pop(connection_id, None) is not None
+
+    async def get_connection_secret(
+        self, connection_id: str
+    ) -> tuple[str, str] | None:
+        return self._secrets.get(connection_id)
+
+    async def record_test_result(
+        self, connection_id: str, ok: bool, tested_at: datetime
+    ) -> None:
+        connection = self.connections.get(connection_id)
+        if connection is not None:
+            self.connections[connection_id] = connection.model_copy(
+                update={"last_tested_at": tested_at, "last_test_ok": ok}
+            )
+
+    async def save_metrics(self, connection_id: str, rows: list[RawMetricRow]) -> int:
+        now = datetime.now(UTC)
+        self.metrics[connection_id] = [
+            PerformanceMetric(
+                id=self._next_id("metric"),
+                connection_id=connection_id,
+                external_ad_id=r.external_ad_id,
+                ctr=r.ctr,
+                spend=r.spend,
+                conversions=r.conversions,
+                impressions=r.impressions,
+                metric_date=r.metric_date,
+                fetched_at=now,
+            )
+            for r in rows
+        ]
+        return len(rows)
+
+    async def list_metrics(self, connection_id: str) -> list[PerformanceMetric]:
+        return self.metrics.get(connection_id, [])

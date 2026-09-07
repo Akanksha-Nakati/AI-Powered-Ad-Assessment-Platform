@@ -10,6 +10,7 @@ than failing on the first request.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol, runtime_checkable
 
 from backend.app.domain.models import (
@@ -17,7 +18,10 @@ from backend.app.domain.models import (
     AdScorecard,
     Assessment,
     Brand,
+    DataSourceConnection,
     KnowledgeDocument,
+    PerformanceMetric,
+    RawMetricRow,
     RetrievedChunk,
     VisualAnalysis,
 )
@@ -138,6 +142,13 @@ class AssessmentRepository(Protocol):
         """Assessments tagged with any of the given warehouse identifiers."""
         ...
 
+    async def list_tagged(self) -> list[Assessment]:
+        """Every assessment with a non-null external_ad_id, regardless of
+        connection. Used to report assessments tagged but absent from one
+        particular warehouse pull -- distinct from list_by_external_ids,
+        which only looks up ids you already know to ask about."""
+        ...
+
 
 @runtime_checkable
 class BrandRepository(Protocol):
@@ -169,3 +180,68 @@ class BrandRepository(Protocol):
     ) -> KnowledgeDocument | None:
         """Used to skip re-embedding a document that has not changed."""
         ...
+
+
+@runtime_checkable
+class PerformanceSource(Protocol):
+    """Runs a user-supplied query against their own SQL data warehouse.
+
+    Takes the connection URI and query as call arguments rather than adapter
+    state, because each DataSourceConnection has its own distinct connection
+    string -- the same shape as KnowledgeStore.retrieve(query, k, brand_id)
+    taking "which scope" as a parameter instead of one instance per brand.
+    """
+
+    async def test_connection(self, connection_uri: str, query: str) -> None:
+        """
+        Raises:
+            WarehouseConnectionError: could not connect, or no driver for
+                this connection string's dialect is installed.
+            WarehouseQueryError: the query is rejected (not a single SELECT)
+                or fails to execute.
+        """
+        ...
+
+    async def fetch_metrics(self, connection_uri: str, query: str) -> list[RawMetricRow]:
+        """
+        Raises:
+            WarehouseConnectionError: could not connect.
+            WarehouseQueryError: the query failed, or its result does not
+                contain the required columns.
+        """
+        ...
+
+
+@runtime_checkable
+class DataSourceRepository(Protocol):
+    """Persistence for data-warehouse connections and the metrics pulled from
+    them. Mirrors BrandRepository's shape."""
+
+    async def create(
+        self, name: str, dialect: str, connection_uri: str, query: str
+    ) -> DataSourceConnection: ...
+
+    async def get(self, connection_id: str) -> DataSourceConnection | None: ...
+
+    async def list_connections(self) -> list[DataSourceConnection]: ...
+
+    async def delete(self, connection_id: str) -> bool: ...
+
+    async def get_connection_secret(
+        self, connection_id: str
+    ) -> tuple[str, str] | None:
+        """Decrypted (connection_uri, query). Service-only -- never reachable
+        from the API layer, and the connection is never modeled with these
+        fields for exactly that reason."""
+        ...
+
+    async def record_test_result(
+        self, connection_id: str, ok: bool, tested_at: datetime
+    ) -> None: ...
+
+    async def save_metrics(self, connection_id: str, rows: list[RawMetricRow]) -> int:
+        """Replaces this connection's previous metrics with the new pull.
+        Returns the row count saved."""
+        ...
+
+    async def list_metrics(self, connection_id: str) -> list[PerformanceMetric]: ...

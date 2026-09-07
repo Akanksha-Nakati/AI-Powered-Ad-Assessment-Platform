@@ -15,13 +15,16 @@ from backend.app.domain.ports import (
     AssessmentRepository,
     BlobStore,
     BrandRepository,
+    DataSourceRepository,
     KnowledgeStore,
+    PerformanceSource,
     Scorer,
     VisionAnalyzer,
 )
 from backend.app.services.assessment_service import AssessmentService
 from backend.app.services.comparison_service import ComparisonService
 from backend.app.services.knowledge_service import KnowledgeService
+from backend.app.services.performance_service import PerformanceService
 
 
 @dataclass(slots=True)
@@ -36,6 +39,9 @@ class Container:
     assessments: AssessmentService
     comparisons: ComparisonService
     knowledge_service: KnowledgeService
+    data_sources: DataSourceRepository
+    warehouse: PerformanceSource
+    performance: PerformanceService
     engine: object | None = None
 
 
@@ -51,8 +57,9 @@ def build_container(settings: Settings) -> Container:
     vision = _build_vision(settings)
     scorer = _build_scorer(settings)
     knowledge = _build_knowledge(settings)
-    engine, repository, brands = _build_repositories(settings)
+    engine, repository, brands, data_sources = _build_repositories(settings)
     blobs = _build_blobs(settings)
+    warehouse = _build_warehouse(settings)
 
     service = AssessmentService(
         vision=vision,
@@ -81,6 +88,9 @@ def build_container(settings: Settings) -> Container:
             service, max_concurrency=settings.comparison_concurrency
         ),
         knowledge_service=KnowledgeService(brands, knowledge),
+        data_sources=data_sources,
+        warehouse=warehouse,
+        performance=PerformanceService(data_sources, warehouse, repository),
         engine=engine,
     )
 
@@ -135,16 +145,22 @@ def _build_knowledge(settings: Settings) -> KnowledgeStore:
 
 def _build_repositories(
     settings: Settings,
-) -> tuple[object, AssessmentRepository, BrandRepository]:
+) -> tuple[object, AssessmentRepository, BrandRepository, DataSourceRepository]:
     from backend.app.infra.db.repositories import (
         SqlAssessmentRepository,
         SqlBrandRepository,
+        SqlDataSourceRepository,
     )
     from backend.app.infra.db.session import create_engine, create_session_factory
 
     engine = create_engine(settings.database_url)
     factory = create_session_factory(engine)
-    return engine, SqlAssessmentRepository(factory), SqlBrandRepository(factory)
+    return (
+        engine,
+        SqlAssessmentRepository(factory),
+        SqlBrandRepository(factory),
+        SqlDataSourceRepository(factory, settings.warehouse_encryption_key),
+    )
 
 
 def _build_blobs(settings: Settings) -> BlobStore:
@@ -152,3 +168,11 @@ def _build_blobs(settings: Settings) -> BlobStore:
 
     settings.blob_path.mkdir(parents=True, exist_ok=True)
     return LocalBlobStore(settings.blob_path)
+
+
+def _build_warehouse(settings: Settings) -> PerformanceSource:
+    from backend.app.infra.warehouse.sql_connector import GenericSqlConnector
+
+    return GenericSqlConnector(
+        query_timeout_seconds=settings.warehouse_query_timeout_seconds
+    )

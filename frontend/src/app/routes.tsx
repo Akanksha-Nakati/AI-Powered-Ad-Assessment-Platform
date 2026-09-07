@@ -5,6 +5,7 @@ import { ComparePage } from "../features/compare/ComparePage";
 import { AssessmentDetailPage } from "../features/history/AssessmentDetailPage";
 import { HistoryPage } from "../features/history/HistoryPage";
 import { LandingPage } from "../features/marketing/LandingPage";
+import { DataSourcesPage } from "../features/performance/DataSourcesPage";
 import { AppLayout } from "./AppLayout";
 import { MarketingLayout } from "./MarketingLayout";
 import { NotFoundPage } from "./NotFoundPage";
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: "history", element: <HistoryPage /> },
       { path: "history/:id", element: <AssessmentDetailPage /> },
       { path: "brands", element: <BrandsPage /> },
+      { path: "performance", element: <DataSourcesPage /> },
     ],
   },
   { path: "*", element: <NotFoundPage /> },

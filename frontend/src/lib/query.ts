@@ -21,4 +21,7 @@ export const queryKeys = {
   assessment: (id: string) => ["assessments", id] as const,
   brands: ["brands"] as const,
   documents: (brandId: string) => ["brands", brandId, "documents"] as const,
+  dataSources: ["dataSources"] as const,
+  dataSource: (id: string) => ["dataSources", id] as const,
+  correlation: (id: string) => ["dataSources", id, "correlation"] as const,
 };

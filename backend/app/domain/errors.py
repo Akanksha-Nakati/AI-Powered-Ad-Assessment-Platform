@@ -39,3 +39,18 @@ class InvalidProviderOutput(ProviderError):
 
 class KnowledgeStoreUnavailable(DomainError):
     """The vector store is not ready to serve retrievals."""
+
+
+class WarehouseConnectionError(DomainError):
+    """
+    Could not connect to the configured data warehouse.
+
+    Never constructed with a raw driver exception's message: connection errors
+    from SQLAlchemy can embed the full connection URI, password included. See
+    infra/warehouse/sql_connector.py for the redaction discipline this implies.
+    """
+
+
+class WarehouseQueryError(DomainError):
+    """The configured query failed, or its result did not match the expected
+    (external_ad_id, ctr, spend, conversions, impressions, metric_date) shape."""

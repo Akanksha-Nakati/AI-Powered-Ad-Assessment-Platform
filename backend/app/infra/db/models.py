@@ -12,9 +12,9 @@ them would add joins that buy nothing.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
-from sqlalchemy import ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, Date, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 
@@ -111,3 +111,50 @@ class ComparisonRow(Base):
     ad_type: Mapped[str] = mapped_column(String(64), nullable=False)
     #: Assessment ids in ranked order, best first.
     ranked_assessment_ids: Mapped[list] = mapped_column(JSON, nullable=False)
+
+
+class DataSourceConnectionRow(Base):
+    __tablename__ = "data_source_connections"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    dialect: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    #: Fernet-encrypted. Never modeled in app/domain/models.py -- write-only,
+    #: read back only by PerformanceService via get_connection_secret.
+    connection_uri_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    query_text_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        UtcDateTime, default=_utcnow, nullable=False
+    )
+    last_tested_at: Mapped[datetime | None] = mapped_column(UtcDateTime)
+    last_test_ok: Mapped[bool | None] = mapped_column(Boolean)
+
+    metrics: Mapped[list[PerformanceMetricRow]] = relationship(
+        back_populates="connection", cascade="all, delete-orphan"
+    )
+
+
+class PerformanceMetricRow(Base):
+    __tablename__ = "performance_metrics"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    connection_id: Mapped[str] = mapped_column(
+        ForeignKey("data_source_connections.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    external_ad_id: Mapped[str] = mapped_column(String(128), index=True, nullable=False)
+
+    ctr: Mapped[float | None] = mapped_column(Float)
+    spend: Mapped[float | None] = mapped_column(Float)
+    conversions: Mapped[int | None] = mapped_column(Integer)
+    impressions: Mapped[int | None] = mapped_column(Integer)
+    metric_date: Mapped[date] = mapped_column(Date, nullable=False)
+
+    fetched_at: Mapped[datetime] = mapped_column(
+        UtcDateTime, default=_utcnow, nullable=False
+    )
+
+    connection: Mapped[DataSourceConnectionRow] = relationship(back_populates="metrics")

@@ -138,6 +138,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/data-sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Data Sources */
+        get: operations["list_data_sources_api_v1_data_sources_get"];
+        put?: never;
+        /** Create Data Source */
+        post: operations["create_data_source_api_v1_data_sources_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-sources/{connection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Data Source */
+        get: operations["get_data_source_api_v1_data_sources__connection_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Data Source */
+        delete: operations["delete_data_source_api_v1_data_sources__connection_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-sources/{connection_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test Data Source */
+        post: operations["test_data_source_api_v1_data_sources__connection_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-sources/{connection_id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Data Source */
+        post: operations["refresh_data_source_api_v1_data_sources__connection_id__refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-sources/{connection_id}/correlation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Correlation */
+        get: operations["get_correlation_api_v1_data_sources__connection_id__correlation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -307,16 +394,112 @@ export interface components {
             label: string;
             assessment: components["schemas"]["Assessment"];
         };
+        /**
+         * CorrelationPoint
+         * @description One matched (our assessment, their performance) pair.
+         */
+        CorrelationPoint: {
+            /** Assessment Id */
+            assessment_id: string;
+            /** External Ad Id */
+            external_ad_id: string;
+            /** Overall Score */
+            overall_score: number;
+            /** Avg Ctr */
+            avg_ctr: number | null;
+            /** Total Spend */
+            total_spend: number | null;
+            /** Total Conversions */
+            total_conversions: number | null;
+            /**
+             * Sample Size
+             * @description How many metric rows this point aggregates.
+             */
+            sample_size: number;
+        };
+        /**
+         * CorrelationResult
+         * @description Does the creative score predict real performance, for one connection.
+         */
+        CorrelationResult: {
+            /** Points */
+            points?: components["schemas"]["CorrelationPoint"][];
+            /**
+             * Pearson R
+             * @description None below 2 matched points or when either axis has zero variance -- the coefficient is undefined there, not just noisy.
+             */
+            pearson_r?: number | null;
+            /** Matched Count */
+            matched_count: number;
+            /**
+             * Unmatched Assessments
+             * @description Assessments tagged with an external_ad_id that no warehouse row shares.
+             */
+            unmatched_assessments: number;
+            /**
+             * Unmatched Metrics
+             * @description Warehouse external_ad_ids that no assessment is tagged with.
+             */
+            unmatched_metrics: number;
+        };
         /** CreateBrandRequest */
         CreateBrandRequest: {
             /** Name */
             name: string;
+        };
+        /** CreateDataSourceRequest */
+        CreateDataSourceRequest: {
+            /** Name */
+            name: string;
+            /**
+             * Dialect
+             * @description A display label only (Snowflake/BigQuery/Postgres/...).
+             */
+            dialect: string;
+            /**
+             * Connection Uri
+             * @description Write-only. Never returned by this or any other endpoint.
+             */
+            connection_uri: string;
+            /**
+             * Query
+             * @description Must return columns: external_ad_id, ctr, spend, conversions, impressions, metric_date.
+             */
+            query: string;
         };
         /**
          * Criterion
          * @enum {string}
          */
         Criterion: "attention" | "clarity" | "targeting" | "cta" | "branding" | "value";
+        /**
+         * DataSourceConnection
+         * @description A configured link to a user's own SQL data warehouse.
+         *
+         *     Deliberately excludes the connection URI and query text -- those are
+         *     write-only, encrypted at rest, and never modeled as something the API can
+         *     hand back. See PerformanceService.get_connection_secret's docstring.
+         */
+        DataSourceConnection: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Dialect
+             * @description A display label only (Snowflake/BigQuery/Postgres/...) -- no backend logic branches on it.
+             */
+            dialect: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Last Tested At */
+            last_tested_at?: string | null;
+            /** Last Test Ok */
+            last_test_ok?: boolean | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -353,6 +536,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** RefreshResult */
+        RefreshResult: {
+            /** Rows Fetched */
+            rows_fetched: number;
         };
         /**
          * RetrievedChunk
@@ -778,6 +966,212 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Comparison"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_data_sources_api_v1_data_sources_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataSourceConnection"][];
+                };
+            };
+        };
+    };
+    create_data_source_api_v1_data_sources_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDataSourceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataSourceConnection"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_data_source_api_v1_data_sources__connection_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataSourceConnection"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_data_source_api_v1_data_sources__connection_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_data_source_api_v1_data_sources__connection_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataSourceConnection"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_data_source_api_v1_data_sources__connection_id__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefreshResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_correlation_api_v1_data_sources__connection_id__correlation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrelationResult"];
                 };
             };
             /** @description Validation Error */
