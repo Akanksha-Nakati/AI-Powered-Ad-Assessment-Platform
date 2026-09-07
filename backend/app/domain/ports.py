@@ -122,6 +122,22 @@ class AssessmentRepository(Protocol):
         """Return a previous assessment for an identical request, if any."""
         ...
 
+    async def set_external_ad_id(
+        self, assessment_id: str, external_ad_id: str | None
+    ) -> Assessment:
+        """Tag (or untag, with None) an assessment with its warehouse identifier.
+
+        Raises:
+            NotFoundError: no assessment has this id.
+            ConflictError: a *different* assessment already holds this id.
+                Re-setting the same assessment's own tag is idempotent.
+        """
+        ...
+
+    async def list_by_external_ids(self, external_ad_ids: list[str]) -> list[Assessment]:
+        """Assessments tagged with any of the given warehouse identifiers."""
+        ...
+
 
 @runtime_checkable
 class BrandRepository(Protocol):

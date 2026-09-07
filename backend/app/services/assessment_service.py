@@ -14,6 +14,7 @@ import uuid
 from datetime import UTC, datetime
 
 from backend.app.domain.criteria import Criterion
+from backend.app.domain.errors import NotFoundError
 from backend.app.domain.models import (
     AdMetadata,
     AdScorecard,
@@ -145,6 +146,14 @@ class AssessmentService:
         if self._repository is None:
             return []
         return await self._repository.list_recent(limit=limit, offset=offset)
+
+    async def set_external_ad_id(
+        self, assessment_id: str, external_ad_id: str | None
+    ) -> Assessment:
+        """Raises NotFoundError: on unknown id, or with no repository configured."""
+        if self._repository is None:
+            raise NotFoundError(f"no assessment with id {assessment_id}")
+        return await self._repository.set_external_ad_id(assessment_id, external_ad_id)
 
 
 def _with_derived_overall(scorecard: AdScorecard) -> AdScorecard:

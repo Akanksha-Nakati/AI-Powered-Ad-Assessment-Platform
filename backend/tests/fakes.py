@@ -10,7 +10,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from backend.app.domain.criteria import Criterion
-from backend.app.domain.errors import ConflictError, KnowledgeStoreUnavailable
+from backend.app.domain.errors import (
+    ConflictError,
+    KnowledgeStoreUnavailable,
+    NotFoundError,
+)
 from backend.app.domain.models import (
     AdMetadata,
     AdScorecard,
@@ -173,6 +177,35 @@ class FakeAssessmentRepository:
 
     async def find_cached(self, cache_key: str):
         return self.by_cache_key.get(cache_key)
+
+    async def set_external_ad_id(self, assessment_id: str, external_ad_id: str | None):
+        assessment = await self.get(assessment_id)
+        if assessment is None:
+            raise NotFoundError(f"no assessment with id {assessment_id}")
+        if external_ad_id is not None:
+            collision = next(
+                (
+                    a
+                    for a in self.saved
+                    if a.external_ad_id == external_ad_id and a.id != assessment_id
+                ),
+                None,
+            )
+            if collision is not None:
+                raise ConflictError(
+                    f"assessment {collision.id} already uses external_ad_id "
+                    f"{external_ad_id!r}"
+                )
+        updated = assessment.model_copy(update={"external_ad_id": external_ad_id})
+        self.saved[self.saved.index(assessment)] = updated
+        key = updated.provider_info.get("cache_key")
+        if key:
+            self.by_cache_key[key] = updated
+        return updated
+
+    async def list_by_external_ids(self, external_ad_ids: list[str]) -> list:
+        wanted = set(external_ad_ids)
+        return [a for a in self.saved if a.external_ad_id in wanted]
 
 
 class FakeBrandRepository:

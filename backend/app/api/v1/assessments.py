@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
+from pydantic import BaseModel, Field
 
 from backend.app.api.deps import AssessmentServiceDep
 from backend.app.domain.errors import NotFoundError
@@ -71,3 +72,23 @@ async def get_assessment(
     if assessment is None:
         raise NotFoundError(f"no assessment with id {assessment_id}")
     return assessment
+
+
+class TagAssessmentRequest(BaseModel):
+    external_ad_id: str | None = Field(
+        default=None,
+        max_length=128,
+        description="This assessment's identifier in your own data warehouse.",
+    )
+
+
+@router.patch("/{assessment_id}", response_model=Assessment)
+async def tag_assessment(
+    assessment_id: str,
+    payload: TagAssessmentRequest,
+    service: AssessmentServiceDep,
+) -> Assessment:
+    """Attach a warehouse identifier so performance metrics can be joined to
+    this assessment later. Does not affect scoring or its cache key."""
+    external_ad_id = payload.external_ad_id.strip() if payload.external_ad_id else None
+    return await service.set_external_ad_id(assessment_id, external_ad_id or None)

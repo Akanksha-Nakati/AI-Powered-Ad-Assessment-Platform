@@ -88,6 +88,13 @@ export const api = {
 
   getAssessment: (id: string) => request<Assessment>(`/assessments/${id}`),
 
+  tagAssessment: (id: string, externalAdId: string | null) =>
+    request<Assessment>(`/assessments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ external_ad_id: externalAdId }),
+    }),
+
   compare: (input: Omit<AssessInput, "image"> & { images: File[] }) => {
     const form = new FormData();
     input.images.forEach((image) => form.append("ad_images", image));

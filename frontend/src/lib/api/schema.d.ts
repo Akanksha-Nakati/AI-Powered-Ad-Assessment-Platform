@@ -56,7 +56,12 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Tag Assessment
+         * @description Attach a warehouse identifier so performance metrics can be joined to
+         *     this assessment later. Does not affect scoring or its cache key.
+         */
+        patch: operations["tag_assessment_api_v1_assessments__assessment_id__patch"];
         trace?: never;
     };
     "/api/v1/brands": {
@@ -206,6 +211,11 @@ export interface components {
              * @description Which models and prompt version produced this, for cache keying.
              */
             provider_info?: Record<string, never>;
+            /**
+             * External Ad Id
+             * @description This assessment's identifier in the user's own data warehouse, so performance metrics pulled from there can be joined back to it. Set after the fact via PATCH, deliberately not part of build_cache_key: tagging an assessment must never invalidate its cached scorecard.
+             */
+            external_ad_id?: string | null;
         };
         /** Body_create_assessment_api_v1_assessments_post */
         Body_create_assessment_api_v1_assessments_post: {
@@ -358,6 +368,14 @@ export interface components {
             /** Brand Id */
             brand_id?: string | null;
         };
+        /** TagAssessmentRequest */
+        TagAssessmentRequest: {
+            /**
+             * External Ad Id
+             * @description This assessment's identifier in your own data warehouse.
+             */
+            external_ad_id?: string | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -505,6 +523,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Assessment"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tag_assessment_api_v1_assessments__assessment_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assessment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagAssessmentRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

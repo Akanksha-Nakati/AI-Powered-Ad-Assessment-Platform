@@ -166,6 +166,57 @@
             }
           }
         }
+      },
+      "patch": {
+        "tags": [
+          "assessments"
+        ],
+        "summary": "Tag Assessment",
+        "description": "Attach a warehouse identifier so performance metrics can be joined to\nthis assessment later. Does not affect scoring or its cache key.",
+        "operationId": "tag_assessment_api_v1_assessments__assessment_id__patch",
+        "parameters": [
+          {
+            "name": "assessment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assessment Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagAssessmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Assessment"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/brands": {
@@ -566,6 +617,18 @@
             "type": "object",
             "title": "Provider Info",
             "description": "Which models and prompt version produced this, for cache keying."
+          },
+          "external_ad_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Ad Id",
+            "description": "This assessment's identifier in the user's own data warehouse, so performance metrics pulled from there can be joined back to it. Set after the fact via PATCH, deliberately not part of build_cache_key: tagging an assessment must never invalidate its cached scorecard."
           }
         },
         "additionalProperties": false,
@@ -918,6 +981,25 @@
         ],
         "title": "RetrievedChunk",
         "description": "One passage of marketing guidance pulled from the knowledge store."
+      },
+      "TagAssessmentRequest": {
+        "properties": {
+          "external_ad_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Ad Id",
+            "description": "This assessment's identifier in your own data warehouse."
+          }
+        },
+        "type": "object",
+        "title": "TagAssessmentRequest"
       },
       "ValidationError": {
         "properties": {

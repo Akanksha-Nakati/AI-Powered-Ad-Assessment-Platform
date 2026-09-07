@@ -54,6 +54,13 @@ class AssessmentRow(Base):
     #: model calls.
     cache_key: Mapped[str] = mapped_column(String(64), unique=True, index=True)
 
+    #: This assessment's id in the user's own warehouse, for joining against
+    #: pulled performance metrics. Unique -- enforced at the DB level, not just
+    #: in the service -- so two assessments can never claim the same ad.
+    external_ad_id: Mapped[str | None] = mapped_column(
+        String(128), unique=True, index=True
+    )
+
     __table_args__ = (
         Index("ix_assessments_created_at_desc", created_at.desc()),
     )

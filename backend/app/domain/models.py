@@ -94,6 +94,15 @@ class Assessment(BaseModel):
         default_factory=dict,
         description="Which models and prompt version produced this, for cache keying.",
     )
+    external_ad_id: str | None = Field(
+        default=None,
+        description=(
+            "This assessment's identifier in the user's own data warehouse, so "
+            "performance metrics pulled from there can be joined back to it. Set "
+            "after the fact via PATCH, deliberately not part of build_cache_key: "
+            "tagging an assessment must never invalidate its cached scorecard."
+        ),
+    )
 
 
 class Brand(BaseModel):

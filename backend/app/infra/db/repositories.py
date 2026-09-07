@@ -11,7 +11,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from backend.app.domain.errors import ConflictError
+from backend.app.domain.errors import ConflictError, NotFoundError
 from backend.app.domain.models import (
     AdMetadata,
     AdScorecard,
@@ -41,6 +41,7 @@ def _to_domain(row: AssessmentRow) -> Assessment:
         context=[RetrievedChunk.model_validate(c) for c in row.context],
         image_sha256=row.image_sha256,
         provider_info=row.provider_info,
+        external_ad_id=row.external_ad_id,
     )
 
 
@@ -58,6 +59,7 @@ def _to_row(assessment: Assessment, cache_key: str) -> AssessmentRow:
         context=[c.model_dump(mode="json") for c in assessment.context],
         provider_info=assessment.provider_info,
         cache_key=cache_key,
+        external_ad_id=assessment.external_ad_id,
     )
 
 
@@ -95,6 +97,44 @@ class SqlAssessmentRepository:
         async with session_scope(self._session_factory) as session:
             row = (await session.execute(stmt)).scalar_one_or_none()
             return _to_domain(row) if row else None
+
+    async def set_external_ad_id(
+        self, assessment_id: str, external_ad_id: str | None
+    ) -> Assessment:
+        async with session_scope(self._session_factory) as session:
+            row = await session.get(AssessmentRow, assessment_id)
+            if row is None:
+                raise NotFoundError(f"no assessment with id {assessment_id}")
+            if external_ad_id is not None:
+                # Check-then-set, same as SqlBrandRepository.create's duplicate-name
+                # check -- the DB's own unique index is the backstop against the
+                # theoretical race, not a transaction-level lock.
+                existing = (
+                    await session.execute(
+                        select(AssessmentRow).where(
+                            AssessmentRow.external_ad_id == external_ad_id,
+                            AssessmentRow.id != assessment_id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if existing is not None:
+                    raise ConflictError(
+                        f"assessment {existing.id} already uses external_ad_id "
+                        f"{external_ad_id!r}"
+                    )
+            row.external_ad_id = external_ad_id
+            await session.flush()
+            return _to_domain(row)
+
+    async def list_by_external_ids(self, external_ad_ids: list[str]) -> list[Assessment]:
+        if not external_ad_ids:
+            return []
+        stmt = select(AssessmentRow).where(
+            AssessmentRow.external_ad_id.in_(external_ad_ids)
+        )
+        async with session_scope(self._session_factory) as session:
+            rows = (await session.execute(stmt)).scalars().all()
+            return [_to_domain(row) for row in rows]
 
 
 def _brand_to_domain(row: BrandRow, document_count: int = 0) -> Brand:
