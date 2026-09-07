@@ -17,6 +17,9 @@ export type KnowledgeDocument = components["schemas"]["KnowledgeDocument"];
 export type Comparison = components["schemas"]["Comparison"];
 export type ComparisonEntry = components["schemas"]["ComparisonEntry"];
 export type Criterion = components["schemas"]["Criterion"];
+export type DataSourceConnection = components["schemas"]["DataSourceConnection"];
+export type CorrelationPoint = components["schemas"]["CorrelationPoint"];
+export type CorrelationResult = components["schemas"]["CorrelationResult"];
 
 /** Display order for the six criteria. */
 export const CRITERIA: Criterion[] = [

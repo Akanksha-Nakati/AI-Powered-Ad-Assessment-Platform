@@ -11,11 +11,14 @@ from backend.app.container import Container
 from backend.app.services.assessment_service import AssessmentService
 from backend.app.services.comparison_service import ComparisonService
 from backend.app.services.knowledge_service import KnowledgeService
+from backend.app.services.performance_service import PerformanceService
 from backend.tests.fakes import (
     FakeAssessmentRepository,
     FakeBlobStore,
     FakeBrandRepository,
+    FakeDataSourceRepository,
     FakeKnowledgeStore,
+    FakePerformanceSource,
     FakeScorer,
     FakeVisionAnalyzer,
 )
@@ -48,6 +51,8 @@ def make_client(settings):
         repository: FakeAssessmentRepository | None = None,
         blobs: FakeBlobStore | None = None,
         brands: FakeBrandRepository | None = None,
+        data_sources: FakeDataSourceRepository | None = None,
+        warehouse: FakePerformanceSource | None = None,
     ) -> tuple[TestClient, Container]:
         vision = vision or FakeVisionAnalyzer()
         scorer = scorer or FakeScorer()
@@ -55,6 +60,10 @@ def make_client(settings):
         repository = repository if repository is not None else FakeAssessmentRepository()
         blobs = blobs if blobs is not None else FakeBlobStore()
         brands = brands if brands is not None else FakeBrandRepository()
+        data_sources = (
+            data_sources if data_sources is not None else FakeDataSourceRepository()
+        )
+        warehouse = warehouse if warehouse is not None else FakePerformanceSource()
         assessment_service = AssessmentService(
             vision=vision,
             scorer=scorer,
@@ -76,6 +85,9 @@ def make_client(settings):
             knowledge_service=KnowledgeService(brands, knowledge),
             comparisons=ComparisonService(assessment_service),
             assessments=assessment_service,
+            data_sources=data_sources,
+            warehouse=warehouse,
+            performance=PerformanceService(data_sources, warehouse, repository),
         )
         return TestClient(build_test_app(container)), container
 

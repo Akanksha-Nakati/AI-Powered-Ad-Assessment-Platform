@@ -7,6 +7,7 @@ const TABS = [
   { to: "/app/compare", label: "Compare", icon: icons.layers },
   { to: "/app/history", label: "History", icon: icons.clock },
   { to: "/app/brands", label: "Brand rules", icon: icons.book },
+  { to: "/app/performance", label: "Performance", icon: icons.target },
 ];
 
 export function AppLayout() {

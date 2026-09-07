@@ -21,6 +21,8 @@ from backend.app.domain.errors import (
     KnowledgeStoreUnavailable,
     NotFoundError,
     ProviderError,
+    WarehouseConnectionError,
+    WarehouseQueryError,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,6 +45,16 @@ _STATUS_MAP: list[tuple[type[DomainError], int, str]] = [
         KnowledgeStoreUnavailable,
         status.HTTP_503_SERVICE_UNAVAILABLE,
         "The marketing knowledge base is not ready yet.",
+    ),
+    (
+        WarehouseConnectionError,
+        status.HTTP_502_BAD_GATEWAY,
+        "Could not connect to the configured data warehouse.",
+    ),
+    (
+        WarehouseQueryError,
+        status.HTTP_502_BAD_GATEWAY,
+        "The configured query failed or returned an unexpected shape.",
     ),
     (
         ConfigurationError,

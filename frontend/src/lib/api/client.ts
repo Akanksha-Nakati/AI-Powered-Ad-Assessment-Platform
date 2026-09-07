@@ -9,6 +9,8 @@ import type {
   Assessment,
   Brand,
   Comparison,
+  CorrelationResult,
+  DataSourceConnection,
   KnowledgeDocument,
 } from "./types";
 
@@ -88,6 +90,13 @@ export const api = {
 
   getAssessment: (id: string) => request<Assessment>(`/assessments/${id}`),
 
+  tagAssessment: (id: string, externalAdId: string | null) =>
+    request<Assessment>(`/assessments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ external_ad_id: externalAdId }),
+    }),
+
   compare: (input: Omit<AssessInput, "image"> & { images: File[] }) => {
     const form = new FormData();
     input.images.forEach((image) => form.append("ad_images", image));
@@ -121,4 +130,37 @@ export const api = {
       body: form,
     });
   },
+
+  listDataSources: () => request<DataSourceConnection[]>("/data-sources"),
+
+  createDataSource: (input: {
+    name: string;
+    dialect: string;
+    connectionUri: string;
+    query: string;
+  }) =>
+    request<DataSourceConnection>("/data-sources", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: input.name,
+        dialect: input.dialect,
+        connection_uri: input.connectionUri,
+        query: input.query,
+      }),
+    }),
+
+  deleteDataSource: (id: string) =>
+    request<void>(`/data-sources/${id}`, { method: "DELETE" }),
+
+  testDataSource: (id: string) =>
+    request<DataSourceConnection>(`/data-sources/${id}/test`, { method: "POST" }),
+
+  refreshDataSource: (id: string) =>
+    request<{ rows_fetched: number }>(`/data-sources/${id}/refresh`, {
+      method: "POST",
+    }),
+
+  getCorrelation: (id: string) =>
+    request<CorrelationResult>(`/data-sources/${id}/correlation`),
 };

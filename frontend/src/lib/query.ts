@@ -3,8 +3,12 @@ import { QueryClient } from "@tanstack/react-query";
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Assessments are immutable once created, so refetching them on every
-      // window focus is pure waste.
+      // Assessments can now be tagged with an external_ad_id after creation
+      // (see PATCH /assessments/:id), so they're no longer strictly immutable
+      // -- but that's a rare, user-initiated edit, not something changing in
+      // the background, so a minute of staleness is still a fine default.
+      // Tagging invalidates its own query key directly rather than relying on
+      // this window to pass.
       staleTime: 60_000,
       retry: 1,
     },
@@ -17,4 +21,7 @@ export const queryKeys = {
   assessment: (id: string) => ["assessments", id] as const,
   brands: ["brands"] as const,
   documents: (brandId: string) => ["brands", brandId, "documents"] as const,
+  dataSources: ["dataSources"] as const,
+  dataSource: (id: string) => ["dataSources", id] as const,
+  correlation: (id: string) => ["dataSources", id, "correlation"] as const,
 };

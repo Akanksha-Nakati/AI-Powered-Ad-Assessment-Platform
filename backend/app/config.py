@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     # --- Credentials ---
     google_api_key: str = ""
     anthropic_api_key: str = ""
+    #: Encrypts data-source connection secrets at rest. Only required to
+    #: create a data source, not at startup -- most deployments won't touch
+    #: this feature immediately. Generate with:
+    #: python -c "from cryptography.fernet import Fernet; \
+    #: print(Fernet.generate_key().decode())"
+    warehouse_encryption_key: str = ""
 
     # --- Provider selection (resolved in app/container.py) ---
     vision_provider: VisionProvider = "gemini"
@@ -65,6 +71,11 @@ class Settings(BaseSettings):
     # --- Comparison ---
     #: Bounds concurrent provider calls when several variants are compared.
     comparison_concurrency: int = 4
+
+    # --- Data warehouse connections ---
+    #: A hung or slow user-supplied query is stopped from this side; the
+    #: underlying blocking DBAPI call may keep running past it regardless.
+    warehouse_query_timeout_seconds: int = 30
 
     # --- Prompting ---
     #: Bumped whenever a prompt changes; part of the assessment cache key so a

@@ -14,6 +14,7 @@ from backend.app.container import Container
 from backend.app.services.assessment_service import AssessmentService
 from backend.app.services.comparison_service import ComparisonService
 from backend.app.services.knowledge_service import KnowledgeService
+from backend.app.services.performance_service import PerformanceService
 
 
 def get_container(request: Request) -> Container:
@@ -38,7 +39,16 @@ def get_comparison_service(
     return container.comparisons
 
 
+def get_performance_service(
+    container: Annotated[Container, Depends(get_container)],
+) -> PerformanceService:
+    return container.performance
+
+
 ContainerDep = Annotated[Container, Depends(get_container)]
 AssessmentServiceDep = Annotated[AssessmentService, Depends(get_assessment_service)]
 KnowledgeServiceDep = Annotated[KnowledgeService, Depends(get_knowledge_service)]
 ComparisonServiceDep = Annotated[ComparisonService, Depends(get_comparison_service)]
+PerformanceServiceDep = Annotated[
+    PerformanceService, Depends(get_performance_service)
+]
